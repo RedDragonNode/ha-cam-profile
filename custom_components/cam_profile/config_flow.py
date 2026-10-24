@@ -27,6 +27,7 @@ from .const import (
     CONF_PATTERN,
     CONF_RECORDER_KEY,
     CONF_RECORDER_URL,
+    CONF_SCHEDULE,
     CONF_SUN,
     CONF_TIME_FROM,
     CONF_TIME_TO,
@@ -44,6 +45,7 @@ from .const import (
 from .recorder_client import RecorderAuthError, RecorderClient, RecorderError
 
 _TEXT = selector.TextSelector()
+_DAY = "weekday_"  # Feldname der Schalter im Formular: weekday_mon bis weekday_sun
 _SECRET = selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD))
 
 # Auswahl in der Oberfläche -> gespeicherter Wert ("egal" wird als leerer Text gespeichert und überschreibt dann auch)
@@ -77,17 +79,6 @@ def _folder_select(options: list[str]) -> selector.SelectSelector:
     )
 
 
-def _weekday_select() -> selector.SelectSelector:
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(
-            options=list(WEEKDAYS),
-            multiple=True,
-            translation_key="weekdays",
-            mode=selector.SelectSelectorMode.LIST,
-        )
-    )
-
-
 def _sun_select() -> selector.SelectSelector:
     return selector.SelectSelector(
         selector.SelectSelectorConfig(
@@ -107,7 +98,7 @@ def _how_data(user_input: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _when_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    """Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne sowie die Fehler dazu."""
+    """Nachlauf, Höchstdauer, Zeitfenster, Wochentage (ein Schalter je Tag), Sonne, Zeitplan und Fehler."""
     errors: dict[str, str] = {}
     start, end = user_input.get(CONF_TIME_FROM) or "", user_input.get(CONF_TIME_TO) or ""
     if bool(start) != bool(end):
@@ -117,19 +108,28 @@ def _when_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str,
         CONF_MAX_MINUTES: int(user_input.get(CONF_MAX_MINUTES) or 0),
         CONF_TIME_FROM: start if start and end else "",
         CONF_TIME_TO: end if start and end else "",
-        CONF_WEEKDAYS: [day for day in WEEKDAYS if day in (user_input.get(CONF_WEEKDAYS) or [])],
+        CONF_WEEKDAYS: [day for day in WEEKDAYS if user_input.get(f"{_DAY}{day}", True)],
         CONF_SUN: _SUN_OPTIONS.get(user_input.get(CONF_SUN) or "any", ""),
+        CONF_SCHEDULE: user_input.get(CONF_SCHEDULE) or "",
     }
     return data, errors
 
 
 # Vorbelegung beim Anlegen (und für Felder, die ein älteres Profil nicht gespeichert hat)
-_NEW_PROFILE = {CONF_PATTERN: DEFAULT_PATTERN, CONF_AFTER: 0, CONF_MAX_MINUTES: 0, CONF_SUN: ""}
+_NEW_PROFILE = {
+    CONF_PATTERN: DEFAULT_PATTERN,
+    CONF_AFTER: 0,
+    CONF_MAX_MINUTES: 0,
+    CONF_SUN: "",
+    CONF_WEEKDAYS: list(WEEKDAYS),
+}
 
 
 def _suggestions(current: Mapping[str, Any]) -> dict[str, Any]:
     values = {**_NEW_PROFILE, **current}
     values[CONF_SUN] = _SUN_SUGGESTION.get(values[CONF_SUN], "any")
+    for day in WEEKDAYS:
+        values[f"{_DAY}{day}"] = day in values[CONF_WEEKDAYS]
     return values
 
 
@@ -319,8 +319,9 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
                 vol.Optional(CONF_MAX_MINUTES): _num(1440, "min"),
                 vol.Optional(CONF_TIME_FROM): selector.TimeSelector(),
                 vol.Optional(CONF_TIME_TO): selector.TimeSelector(),
-                vol.Optional(CONF_WEEKDAYS): _weekday_select(),
+                **{vol.Optional(f"{_DAY}{day}", default=True): selector.BooleanSelector() for day in WEEKDAYS},
                 vol.Optional(CONF_SUN): _sun_select(),
+                vol.Optional(CONF_SCHEDULE): selector.EntitySelector(selector.EntitySelectorConfig(domain="schedule")),
             }
         )
         return self.async_show_form(

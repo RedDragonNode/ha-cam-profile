@@ -201,7 +201,7 @@ async def test_weekday_switches_override_and_all_off_means_no_day(hass: HomeAssi
     assert profile.weekdays == ["mon", "tue", "wed", "thu", "fri"]
     assert profile.overridden == ["weekdays"]
     assert hass.states.get(day["sat"]).state == "off"
-    assert entry.subentries["p_A"].data["weekdays"] == []  # der Anlege-Wert bleibt
+    assert entry.subentries["p_A"].data["weekdays"] == list(WEEKDAYS)  # der Anlege-Wert bleibt
 
     for name in ("mon", "tue", "wed", "thu", "fri"):
         await _call(hass, "switch", "turn_off", entity_id=day[name])
@@ -342,13 +342,26 @@ async def test_migration_bakes_the_old_global_defaults_into_the_profiles(hass: H
     assert (own.folder, own.after_s, own.sun) == (["X"], 0, "night")  # eigene Werte bleiben, der Rest kommt dazu
 
 
-async def test_migration_without_global_defaults_leaves_profiles_alone(hass: HomeAssistant) -> None:
-    add_cameras(hass, "a")
-    old = make_profile("Alt", ["camera.a"], max_minutes=15)
-    entry = _legacy_entry(1, {}, [old])
+async def test_migration_without_global_defaults_only_makes_empty_weekdays_explicit(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a", "b")
+    old = make_profile("Alt", ["camera.a"], max_minutes=15, weekdays=[])  # früher hieß leer: jeden Tag
+    some = make_profile("Teil", ["camera.b"], weekdays=["mon"])
+    entry = _legacy_entry(3, {}, [old, some])
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
     assert entry.minor_version == MINOR_VERSION
-    assert dict(entry.subentries["p_Alt"].data) == old
+    assert dict(entry.subentries["p_Alt"].data) == {**old, "weekdays": list(WEEKDAYS)}
+    assert dict(entry.subentries["p_Teil"].data) == some
+    assert entry.runtime_data.profiles["p_Alt"].weekdays == list(WEEKDAYS)
+
+
+async def test_empty_weekdays_in_a_current_profile_mean_no_day(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a")
+    hass.states.async_set("binary_sensor.x", "on")
+    entry = await setup_entry(hass, [make_profile("A", ["camera.a"], triggers=["binary_sensor.x"], weekdays=[])])
+    assert entry.runtime_data.profiles["p_A"].weekdays == []
+    assert not entry.runtime_data.profile_running("p_A")
+    for day in WEEKDAYS:
+        assert hass.states.get(profile_entity(hass, entry, "p_A", "switch", f"weekday_{day}")).state == "off"

@@ -21,7 +21,8 @@ CONF_MAX_MINUTES = "max_minutes"
 CONF_TIME_FROM = "time_from"
 CONF_TIME_TO = "time_to"
 CONF_SUN = "sun"
-CONF_WEEKDAYS = "weekdays"  # Liste aus WEEKDAYS, leer oder alle sieben = jeden Tag
+CONF_WEEKDAYS = "weekdays"  # Tage mit Aufnahme (Liste aus WEEKDAYS), fehlt = jeden Tag, leer = an keinem
+CONF_SCHEDULE = "schedule"  # optional: Entity eines HA-Zeitplans (schedule.*), aufgenommen wird bei "on"
 
 SUN_ANY = ""
 SUN_DAY = "day"
@@ -46,7 +47,8 @@ OVERRIDABLE = (
 LEGACY_DEFAULTS = (CONF_FOLDER, CONF_PATTERN, *OVERRIDABLE)
 
 # Version 1.3: keine globalen Grundeinstellungen mehr, Profile speichern wieder ihre Anlege-Werte selbst
-MINOR_VERSION = 3
+# Version 1.4: leere Wochentage heißen an keinem Tag (vorher jeden Tag), Profile speichern alle sieben
+MINOR_VERSION = 4
 
 STORAGE_VERSION = 1
 

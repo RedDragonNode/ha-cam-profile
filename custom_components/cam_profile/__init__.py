@@ -14,12 +14,14 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     ATTR_PROFILE,
+    CONF_WEEKDAYS,
     DOMAIN,
     LEGACY_DEFAULTS,
     MINOR_VERSION,
     SERVICE_START,
     SERVICE_STOP,
     SUBENTRY_PROFILE,
+    WEEKDAYS,
 )
 from .manager import ProfileManager, overrides_store
 
@@ -57,16 +59,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """1.x -> 1.3: Die globalen Grundeinstellungen aus Version 0.3 fallen weg.
+    """1.x -> 1.4, ohne dass sich das Verhalten der Profile ändert.
 
-    Was ein Profil von dort geerbt hat, wird in das Profil geschrieben, damit sich nichts ändert.
+    1.3: Die globalen Grundeinstellungen aus Version 0.3 fallen weg, was ein Profil von dort geerbt hat,
+    wird in das Profil geschrieben. 1.4: Leere Wochentage hießen jeden Tag und heißen jetzt an keinem Tag,
+    deshalb speichern Profile alle sieben Tage ausdrücklich.
     """
     if entry.version == 1 and entry.minor_version < MINOR_VERSION:
-        defaults = {key: value for key, value in entry.options.items() if key in LEGACY_DEFAULTS}
-        if defaults:
-            for sub in list(entry.subentries.values()):
-                if sub.subentry_type == SUBENTRY_PROFILE:
-                    hass.config_entries.async_update_subentry(entry, sub, data={**defaults, **sub.data})
+        defaults = (
+            {key: value for key, value in entry.options.items() if key in LEGACY_DEFAULTS}
+            if entry.minor_version < 3
+            else {}
+        )
+        for sub in list(entry.subentries.values()):
+            if sub.subentry_type != SUBENTRY_PROFILE:
+                continue
+            data = {**defaults, **sub.data}
+            if not data.get(CONF_WEEKDAYS):
+                data[CONF_WEEKDAYS] = list(WEEKDAYS)
+            if data != dict(sub.data):
+                hass.config_entries.async_update_subentry(entry, sub, data=data)
         hass.config_entries.async_update_entry(entry, options={}, minor_version=MINOR_VERSION)
     return True
 

@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.cam_profile.const import DOMAIN, MINOR_VERSION
+from custom_components.cam_profile.const import DOMAIN, MINOR_VERSION, WEEKDAYS
 from custom_components.cam_profile.recorder_client import RecorderAuthError, RecorderError
 
 URL = "http://addon:8099"
@@ -106,7 +106,7 @@ def make_profile(name: str, cams: list[str], **overrides: Any) -> dict[str, Any]
         "max_minutes": 0,
         "time_from": "",
         "time_to": "",
-        "weekdays": [],
+        "weekdays": list(WEEKDAYS),
         "sun": "",
         **overrides,
     }

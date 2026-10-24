@@ -54,15 +54,22 @@
         },
         "user_when": {
           "title": "Wann aufnehmen?",
-          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Zeitfenster, Wochentage, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne kannst du später auf der Geräteseite des Profils überschreiben, ohne dass sich diese Werte ändern. Von = Bis heißt ganztägig.",
+          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Zeitplan, Zeitfenster, Wochentage, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Ein ausgeschalteter Wochentag nimmt nicht auf, sind alle aus, nimmt das Profil an keinem Tag von allein auf. Für mehrere Zeiten je Wochentag wähle einen Zeitplan (Helfer „Zeitplan“ unter Einstellungen → Geräte & Dienste → Helfer): Aufgenommen wird nur, solange er „an“ ist. Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne kannst du später auf der Geräteseite des Profils überschreiben, ohne dass sich diese Werte ändern. Von = Bis heißt ganztägig.",
           "data": {
             "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
             "after_seconds": "Nachlauf nach „aus“ (Sekunden)",
             "max_minutes": "Höchstdauer pro Aufnahme (Minuten, 0 = unbegrenzt)",
             "time_from": "Nur von (Uhrzeit)",
             "time_to": "Nur bis (Uhrzeit)",
-            "weekdays": "Wochentage (leer = jeden Tag)",
-            "sun": "Sonne"
+            "weekday_mon": "Montag aufnehmen",
+            "weekday_tue": "Dienstag aufnehmen",
+            "weekday_wed": "Mittwoch aufnehmen",
+            "weekday_thu": "Donnerstag aufnehmen",
+            "weekday_fri": "Freitag aufnehmen",
+            "weekday_sat": "Samstag aufnehmen",
+            "weekday_sun": "Sonntag aufnehmen",
+            "sun": "Sonne",
+            "schedule": "Zeitplan (optional, für mehrere Zeiten je Wochentag)"
           }
         },
         "reconfigure": {
@@ -77,15 +84,22 @@
         },
         "reconfigure_when": {
           "title": "Wann aufnehmen?",
-          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Zeitfenster, Wochentage, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Was du auf der Geräteseite des Profils überschrieben hast (aktuell: {overridden}), bleibt davon unberührt, bis du dort „Auf Anlege-Werte zurücksetzen“ drückst. Von = Bis heißt ganztägig.",
+          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Zeitplan, Zeitfenster, Wochentage, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Ein ausgeschalteter Wochentag nimmt nicht auf, sind alle aus, nimmt das Profil an keinem Tag von allein auf. Für mehrere Zeiten je Wochentag wähle einen Zeitplan (Helfer „Zeitplan“). Was du auf der Geräteseite des Profils überschrieben hast (aktuell: {overridden}), bleibt davon unberührt, bis du dort „Auf Anlege-Werte zurücksetzen“ drückst. Von = Bis heißt ganztägig.",
           "data": {
             "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
             "after_seconds": "Nachlauf nach „aus“ (Sekunden)",
             "max_minutes": "Höchstdauer pro Aufnahme (Minuten, 0 = unbegrenzt)",
             "time_from": "Nur von (Uhrzeit)",
             "time_to": "Nur bis (Uhrzeit)",
-            "weekdays": "Wochentage (leer = jeden Tag)",
-            "sun": "Sonne"
+            "weekday_mon": "Montag aufnehmen",
+            "weekday_tue": "Dienstag aufnehmen",
+            "weekday_wed": "Mittwoch aufnehmen",
+            "weekday_thu": "Donnerstag aufnehmen",
+            "weekday_fri": "Freitag aufnehmen",
+            "weekday_sat": "Samstag aufnehmen",
+            "weekday_sun": "Sonntag aufnehmen",
+            "sun": "Sonne",
+            "schedule": "Zeitplan (optional, für mehrere Zeiten je Wochentag)"
           }
         }
       },
@@ -194,17 +208,6 @@
         "any": "egal",
         "day": "nur bei Tag (Sonne über dem Horizont)",
         "night": "nur bei Nacht (Sonne unter dem Horizont)"
-      }
-    },
-    "weekdays": {
-      "options": {
-        "mon": "Montag",
-        "tue": "Dienstag",
-        "wed": "Mittwoch",
-        "thu": "Donnerstag",
-        "fri": "Freitag",
-        "sat": "Samstag",
-        "sun": "Sonntag"
       }
     }
   },

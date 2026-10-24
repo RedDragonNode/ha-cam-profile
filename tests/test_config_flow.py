@@ -7,7 +7,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.cam_profile.const import DEFAULT_PATTERN, DOMAIN
+from custom_components.cam_profile.const import DEFAULT_PATTERN, DOMAIN, WEEKDAYS
 
 from .conftest import KEY, URL, FakeRecorder, add_cameras, make_profile, setup_entry
 
@@ -135,8 +135,9 @@ async def test_profile_flow_creates_subentry_from_any_camera(hass: HomeAssistant
         "max_minutes": 10,
         "time_from": "",
         "time_to": "",
-        "weekdays": [],
+        "weekdays": list(WEEKDAYS),  # die Schalter im Formular sind standardmäßig alle an
         "sun": "night",
+        "schedule": "",
     }  # das Profil speichert seine Anlege-Werte vollständig
 
 
@@ -222,7 +223,8 @@ async def test_profile_flow_stores_all_values_including_zero_and_any_sun(hass: H
         flow["flow_id"], {"name": "Eigen", "folder": "X", "cams": ["camera.a"], "pattern": " {cam} "}
     )
     result = await hass.config_entries.subentries.async_configure(
-        flow["flow_id"], {"after_seconds": 0, "weekdays": ["fri", "mon"], "sun": "any"}
+        flow["flow_id"],
+        {"after_seconds": 0, "sun": "any"} | {f"weekday_{day}": day in ("fri", "mon") for day in WEEKDAYS},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
@@ -288,3 +290,44 @@ async def test_profile_flow_without_folder_is_refused(hass: HomeAssistant) -> No
         flow["flow_id"], {"name": "X", "folder": "", "cams": ["camera.a"]}
     )
     assert bad["errors"] == {"folder": "folder_required"}
+
+
+def _step_values(result: dict) -> dict:
+    return {str(k): k.description["suggested_value"] for k in result["data_schema"].schema if k.description}
+
+
+async def test_weekday_switches_in_the_form_all_off_means_no_day_and_schedule_is_stored(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a")
+    entry = await setup_entry(hass)
+    flow = await hass.config_entries.subentries.async_init((entry.entry_id, "profile"), context={"source": "user"})
+    step2 = await hass.config_entries.subentries.async_configure(
+        flow["flow_id"], {"name": "Plan", "folder": "X", "cams": ["camera.a"]}
+    )
+    suggested = _step_values(step2)
+    assert [suggested[f"weekday_{day}"] for day in WEEKDAYS] == [True] * 7  # neues Profil: jeden Tag
+    assert "schedule" in {str(k) for k in step2["data_schema"].schema}
+
+    result = await hass.config_entries.subentries.async_configure(
+        flow["flow_id"], {f"weekday_{day}": False for day in WEEKDAYS} | {"schedule": "schedule.nachts"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    data = next(s.data for s in entry.subentries.values() if s.subentry_type == "profile")
+    assert data["weekdays"] == []  # alle aus heißt an keinem Tag, im Formular wie auf der Geräteseite
+    assert data["schedule"] == "schedule.nachts"
+
+
+async def test_reconfigure_shows_the_saved_weekdays_and_schedule(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a")
+    entry = await setup_entry(
+        hass, [make_profile("A", ["camera.a"], weekdays=["mon", "sat"], schedule="schedule.nachts")]
+    )
+    flow = await hass.config_entries.subentries.async_init(
+        (entry.entry_id, "profile"), context={"source": "reconfigure", "subentry_id": "p_A"}
+    )
+    step2 = await hass.config_entries.subentries.async_configure(
+        flow["flow_id"], {"name": "A", "folder": "Ueberwachung/A", "cams": ["camera.a"]}
+    )
+    suggested = _step_values(step2)
+    assert [suggested[f"weekday_{day}"] for day in WEEKDAYS] == [True, False, False, False, False, True, False]
+    assert suggested["schedule"] == "schedule.nachts"

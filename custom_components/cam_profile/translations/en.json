@@ -54,15 +54,22 @@
         },
         "user_when": {
           "title": "When to record?",
-          "description": "These are the creation values of the profile. Without triggers and without a restriction (time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. You can override run-on, maximum length, time window, weekdays and sun later on the profile's device page without changing these values. From = until means all day.",
+          "description": "These are the creation values of the profile. Without triggers and without a restriction (schedule, time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. A weekday that is switched off does not record, and with all of them off the profile never records on its own. For several times per weekday pick a schedule (the Schedule helper under Settings → Devices & services → Helpers): it only records while the schedule is on. You can override run-on, maximum length, time window, weekdays and sun later on the profile's device page without changing these values. From = until means all day.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
             "after_seconds": "Run-on after \"off\" (seconds)",
             "max_minutes": "Maximum length per recording (minutes, 0 = unlimited)",
             "time_from": "Only from (time)",
             "time_to": "Only until (time)",
-            "weekdays": "Weekdays (empty = every day)",
-            "sun": "Sun"
+            "weekday_mon": "Record on Monday",
+            "weekday_tue": "Record on Tuesday",
+            "weekday_wed": "Record on Wednesday",
+            "weekday_thu": "Record on Thursday",
+            "weekday_fri": "Record on Friday",
+            "weekday_sat": "Record on Saturday",
+            "weekday_sun": "Record on Sunday",
+            "sun": "Sun",
+            "schedule": "Schedule (optional, for several times per weekday)"
           }
         },
         "reconfigure": {
@@ -77,15 +84,22 @@
         },
         "reconfigure_when": {
           "title": "When to record?",
-          "description": "These are the creation values of the profile. Without triggers and without a restriction (time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there. From = until means all day.",
+          "description": "These are the creation values of the profile. Without triggers and without a restriction (schedule, time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. A weekday that is switched off does not record, and with all of them off the profile never records on its own. For several times per weekday pick a schedule (the Schedule helper). Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there. From = until means all day.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
             "after_seconds": "Run-on after \"off\" (seconds)",
             "max_minutes": "Maximum length per recording (minutes, 0 = unlimited)",
             "time_from": "Only from (time)",
             "time_to": "Only until (time)",
-            "weekdays": "Weekdays (empty = every day)",
-            "sun": "Sun"
+            "weekday_mon": "Record on Monday",
+            "weekday_tue": "Record on Tuesday",
+            "weekday_wed": "Record on Wednesday",
+            "weekday_thu": "Record on Thursday",
+            "weekday_fri": "Record on Friday",
+            "weekday_sat": "Record on Saturday",
+            "weekday_sun": "Record on Sunday",
+            "sun": "Sun",
+            "schedule": "Schedule (optional, for several times per weekday)"
           }
         }
       },
@@ -194,17 +208,6 @@
         "any": "any time",
         "day": "daytime only (sun above the horizon)",
         "night": "night only (sun below the horizon)"
-      }
-    },
-    "weekdays": {
-      "options": {
-        "mon": "Monday",
-        "tue": "Tuesday",
-        "wed": "Wednesday",
-        "thu": "Thursday",
-        "fri": "Friday",
-        "sat": "Saturday",
-        "sun": "Sunday"
       }
     }
   },
