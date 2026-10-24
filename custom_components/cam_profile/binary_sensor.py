@@ -100,4 +100,6 @@ class ProfileRecordingSensor(CamProfileEntity, BinarySensorEntity):
             "since": run.get("start"),
             "manual": run.get("manual"),
             "cams": run.get("cams") or self.profile.cams,
+            "weekdays": self.profile.weekdays,
+            "inherited": self.profile.inherited,
         }

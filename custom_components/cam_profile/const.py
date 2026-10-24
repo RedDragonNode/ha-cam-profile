@@ -21,12 +21,31 @@ CONF_MAX_MINUTES = "max_minutes"
 CONF_TIME_FROM = "time_from"
 CONF_TIME_TO = "time_to"
 CONF_SUN = "sun"
+CONF_WEEKDAYS = "weekdays"  # Liste aus WEEKDAYS, leer oder alle sieben = jeden Tag
 
 SUN_ANY = ""
 SUN_DAY = "day"
 SUN_NIGHT = "night"
 
 DEFAULT_PATTERN = "{cam} %CCYY-%MM-%DD %hh-%mm-%ss"
+
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+# Felder, die als Grundeinstellung (config_entry.options) gelten und im Profil überschrieben werden können.
+# Fehlt ein Feld im Profil, gilt die Grundeinstellung, fehlt auch die, gilt der eingebaute Wert.
+DEFAULTABLE = (
+    CONF_FOLDER,
+    CONF_PATTERN,
+    CONF_AFTER,
+    CONF_MAX_MINUTES,
+    CONF_TIME_FROM,
+    CONF_TIME_TO,
+    CONF_WEEKDAYS,
+    CONF_SUN,
+)
+
+# Version 1.2: Profile speichern nur noch, was sie selbst überschreiben
+MINOR_VERSION = 2
 
 SERVICE_START = "start_profile"
 SERVICE_STOP = "stop_profile"

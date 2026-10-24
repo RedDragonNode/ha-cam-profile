@@ -44,52 +44,54 @@
       "step": {
         "user": {
           "title": "Neues Aufnahme-Profil",
-          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Du kannst jede Kamera wählen, die in Home Assistant schon eingerichtet ist, und dieselbe Kamera in mehreren Profilen verwenden. Eine Kamera nimmt aber nie in zwei Profilen gleichzeitig auf, wer zuerst kommt, behält sie. Im Dateinamen-Muster kannst du die Platzhalter cam (Kamera), short (Kürzel) und profile (Profil) jeweils in geschweiften Klammern verwenden, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
+          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Du kannst jede Kamera wählen, die in Home Assistant schon eingerichtet ist, und dieselbe Kamera in mehreren Profilen verwenden. Eine Kamera nimmt aber nie in zwei Profilen gleichzeitig auf, wer zuerst kommt, behält sie. Ein leeres Feld übernimmt die Grundeinstellung (aktuell: Zielordner {default_folder}, Muster {default_pattern}). Im Dateinamen-Muster kannst du die Platzhalter cam (Kamera), short (Kürzel) und profile (Profil) jeweils in geschweiften Klammern verwenden, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (z. B. Treppe)",
-            "folder": "Zielordner (Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
+            "folder": "Zielordner (leer = Grundeinstellung; Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
             "cams": "Kameras",
-            "pattern": "Dateinamen-Muster"
+            "pattern": "Dateinamen-Muster (leer = Grundeinstellung)"
           }
         },
         "user_when": {
           "title": "Wann aufnehmen?",
-          "description": "Ohne Auslöser und ohne Zeitfenster startet das Profil nur von Hand. Nur mit Zeitfenster oder Sonne nimmt es in dieser Zeit durchgehend auf. Mit Auslöser, zum Beispiel einem Bewegungsmelder, nimmt es auf, solange einer „an“ ist (und das Zeitfenster offen ist).",
+          "description": "Ohne Auslöser und ohne Einschränkung (Zeitfenster, Wochentage, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Ein leeres Feld übernimmt die Grundeinstellung (aktuell: Nachlauf {default_after}, Höchstdauer {default_max}, Zeitfenster {default_window}, Wochentage {default_weekdays}, Sonne {default_sun}). Zum Überschreiben: Von = Bis heißt ganztägig, alle sieben Wochentage heißt jeden Tag, bei Sonne „egal“.",
           "data": {
             "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
-            "after_seconds": "Nachlauf nach „aus“",
-            "max_minutes": "Höchstdauer pro Aufnahme (0 = unbegrenzt)",
-            "time_from": "Nur von (Uhrzeit)",
+            "after_seconds": "Nachlauf nach „aus“ (leer = Grundeinstellung)",
+            "max_minutes": "Höchstdauer pro Aufnahme (0 = unbegrenzt, leer = Grundeinstellung)",
+            "time_from": "Nur von (Uhrzeit, leer = Grundeinstellung)",
             "time_to": "Nur bis (Uhrzeit)",
-            "sun": "Sonne"
+            "weekdays": "Wochentage (leer = Grundeinstellung)",
+            "sun": "Sonne (leer = Grundeinstellung)"
           }
         },
         "reconfigure": {
           "title": "Aufnahme-Profil bearbeiten",
-          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Im Dateinamen-Muster kannst du die Platzhalter cam (Kamera), short (Kürzel) und profile (Profil) jeweils in geschweiften Klammern verwenden, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
+          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Ein leeres Feld übernimmt die Grundeinstellung (aktuell: Zielordner {default_folder}, Muster {default_pattern}). Im Dateinamen-Muster kannst du die Platzhalter cam (Kamera), short (Kürzel) und profile (Profil) jeweils in geschweiften Klammern verwenden, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (z. B. Treppe)",
-            "folder": "Zielordner (Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
+            "folder": "Zielordner (leer = Grundeinstellung; Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
             "cams": "Kameras",
-            "pattern": "Dateinamen-Muster"
+            "pattern": "Dateinamen-Muster (leer = Grundeinstellung)"
           }
         },
         "reconfigure_when": {
           "title": "Wann aufnehmen?",
-          "description": "Ohne Auslöser und ohne Zeitfenster startet das Profil nur von Hand. Nur mit Zeitfenster oder Sonne nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist (und das Zeitfenster offen ist).",
+          "description": "Ohne Auslöser und ohne Einschränkung (Zeitfenster, Wochentage, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Ein leeres Feld übernimmt die Grundeinstellung (aktuell: Nachlauf {default_after}, Höchstdauer {default_max}, Zeitfenster {default_window}, Wochentage {default_weekdays}, Sonne {default_sun}). Zum Überschreiben: Von = Bis heißt ganztägig, alle sieben Wochentage heißt jeden Tag, bei Sonne „egal“.",
           "data": {
             "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
-            "after_seconds": "Nachlauf nach „aus“",
-            "max_minutes": "Höchstdauer pro Aufnahme (0 = unbegrenzt)",
-            "time_from": "Nur von (Uhrzeit)",
+            "after_seconds": "Nachlauf nach „aus“ (leer = Grundeinstellung)",
+            "max_minutes": "Höchstdauer pro Aufnahme (0 = unbegrenzt, leer = Grundeinstellung)",
+            "time_from": "Nur von (Uhrzeit, leer = Grundeinstellung)",
             "time_to": "Nur bis (Uhrzeit)",
-            "sun": "Sonne"
+            "weekdays": "Wochentage (leer = Grundeinstellung)",
+            "sun": "Sonne (leer = Grundeinstellung)"
           }
         }
       },
       "error": {
         "name_taken": "Diesen Namen gibt es schon (oder er ist leer).",
-        "folder_required": "Bitte einen Zielordner angeben.",
+        "folder_required": "Bitte einen Zielordner angeben oder in den Grundeinstellungen festlegen.",
         "cams_required": "Bitte mindestens eine Kamera wählen.",
         "time_both": "Bitte „von“ und „bis“ zusammen angeben."
       },
@@ -141,6 +143,17 @@
         "day": "nur bei Tag (Sonne über dem Horizont)",
         "night": "nur bei Nacht (Sonne unter dem Horizont)"
       }
+    },
+    "weekdays": {
+      "options": {
+        "mon": "Montag",
+        "tue": "Dienstag",
+        "wed": "Mittwoch",
+        "thu": "Donnerstag",
+        "fri": "Freitag",
+        "sat": "Samstag",
+        "sun": "Sonntag"
+      }
     }
   },
   "services": {
@@ -183,6 +196,33 @@
     "profile_lost": {
       "title": "Aufnahme-Profil unerwartet beendet",
       "description": "Der Recorder hat das Profil „{profile}“ beendet. Grund: {reason}. Das Profil startet wieder, sobald sein Auslöser oder Zeitfenster es verlangt, oder von Hand über „Profil starten“."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Grundeinstellungen: Wie aufnehmen",
+        "description": "Diese Werte gelten für jedes Profil, das das Feld nicht selbst füllt. Ändert ein Profil einen Wert, überschreibt das nur dieses Profil, die Grundeinstellung bleibt unverändert. Ein leeres Feld heißt: nicht gesetzt.",
+        "data": {
+          "folder": "Standard-Zielordner (Auswahl oder eigener Name)",
+          "pattern": "Standard-Dateinamen-Muster",
+          "after_seconds": "Standard-Nachlauf nach „aus“",
+          "max_minutes": "Standard-Höchstdauer pro Aufnahme (0 = unbegrenzt)"
+        }
+      },
+      "when": {
+        "title": "Grundeinstellungen: Wann aufnehmen",
+        "description": "Achtung: Ein Profil ohne eigenen Auslöser nimmt von allein auf, sobald hier ein Zeitfenster, Wochentage oder Sonne gelten und das Profil sie nicht selbst überschreibt. Zum Überschreiben setzt du im Profil „Von“ und „Bis“ auf dieselbe Uhrzeit (ganztägig), wählst alle sieben Wochentage oder bei Sonne „egal“.",
+        "data": {
+          "time_from": "Standard: nur von (Uhrzeit)",
+          "time_to": "Standard: nur bis (Uhrzeit)",
+          "weekdays": "Standard-Wochentage (leer = jeden Tag)",
+          "sun": "Standard-Sonne"
+        }
+      }
+    },
+    "error": {
+      "time_both": "Bitte „von“ und „bis“ zusammen angeben."
     }
   }
 }

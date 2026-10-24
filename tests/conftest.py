@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigSubentryData
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.cam_profile.const import DOMAIN
+from custom_components.cam_profile.const import DOMAIN, MINOR_VERSION
 from custom_components.cam_profile.recorder_client import RecorderAuthError, RecorderError
 
 URL = "http://addon:8099"
@@ -110,14 +110,21 @@ def make_profile(name: str, cams: list[str], **overrides: Any) -> dict[str, Any]
     }
 
 
+def bare_profile(name: str, cams: list[str], **fields: Any) -> dict[str, Any]:
+    """Subentry-Daten, wie sie ab Version 0.3 gespeichert werden: nur Pflichtfelder und was das Profil selbst setzt."""
+    return {"name": name, "cams": cams, "triggers": [], **fields}
+
+
 def add_cameras(hass: HomeAssistant, *names: str) -> None:
     """Legt Kamera-Zustände an (camera.<name>) ohne echte Quell-Integration."""
     for name in names:
         hass.states.async_set(f"camera.{name}", "idle", {"friendly_name": name.title()})
 
 
-async def setup_entry(hass: HomeAssistant, profiles: list[dict[str, Any]] | None = None) -> MockConfigEntry:
-    """Richtet Cam Profile mit den angegebenen Profilen ein (Subentry-ID = 'p_<Name>')."""
+async def setup_entry(
+    hass: HomeAssistant, profiles: list[dict[str, Any]] | None = None, options: dict[str, Any] | None = None
+) -> MockConfigEntry:
+    """Richtet Cam Profile mit den angegebenen Profilen und Grundeinstellungen ein (Subentry-ID = 'p_<Name>')."""
     subentries = [
         ConfigSubentryData(
             subentry_type="profile",
@@ -129,7 +136,12 @@ async def setup_entry(hass: HomeAssistant, profiles: list[dict[str, Any]] | None
         for profile in profiles or []
     ]
     entry = MockConfigEntry(
-        domain=DOMAIN, title="Cam Profile", data={"recorder_url": URL, "recorder_key": KEY}, subentries_data=subentries
+        domain=DOMAIN,
+        title="Cam Profile",
+        data={"recorder_url": URL, "recorder_key": KEY},
+        options=options or {},
+        subentries_data=subentries,
+        minor_version=MINOR_VERSION,
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)

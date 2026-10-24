@@ -46,17 +46,29 @@ Der Name der Kamera ist der Name ihres Geräts, sonst der der Entity. Haben zwei
 | Auslöser | Bewegungsmelder, Schalter oder Sensor (mehrere möglich): irgendeiner „an“ = aufnehmen |
 | Nachlauf | Sekunden, die nach „aus“ weiter aufgenommen wird |
 | Höchstdauer | Minuten pro Aufnahme (0 = unbegrenzt). Danach geht es erst nach „aus → an“ weiter |
-| Von / bis | Zeitfenster, auch über Mitternacht |
+| Von / bis | Zeitfenster, auch über Mitternacht. Von = bis bedeutet ganztägig |
+| Wochentage | Mo bis So, mehrere möglich. Leer oder alle sieben heißt jeden Tag. Bei einem Fenster über Mitternacht zählt der Tag, an dem es beginnt (Freitag 22:00 bis 06:00 gehört um 03:00 nachts noch zum Freitag) |
 | Sonne | nur bei Tag oder nur bei Nacht (`sun.sun`) |
 
 Regeln:
 
-- **Nur Zeitfenster oder Sonne, kein Auslöser:** nimmt im Fenster durchgehend auf (z. B. „bei Nacht“).
-- **Auslöser (und Fenster):** nimmt auf, solange ein Auslöser „an“ ist und das Fenster offen ist.
+- **Nur Zeitfenster, Wochentage oder Sonne, kein Auslöser:** nimmt in dieser Zeit durchgehend auf (z. B. „bei Nacht“ oder „samstags“).
+- **Auslöser (und Einschränkung):** nimmt auf, solange ein Auslöser „an“ ist und Zeitfenster, Wochentag und Sonne passen.
 - **Nichts angegeben:** nur von Hand, über den Schalter **Von Hand aufnehmen** am Gerät des Profils oder über die Dienste unten.
 - **Eine Kamera nimmt nie in zwei Profilen gleichzeitig auf.** Wer zuerst kommt, behält sie, das andere Profil nimmt ohne sie auf und meldet sie als „busy“. Der Recorder erkennt eine Kamera an ihrer ID, bei Cam Profile ist das die Entity-ID (`camera.…`). Spricht eine andere Integration denselben Recorder mit eigenen Kamera-IDs an (zum Beispiel Cam Recorder Profile), erkennt er dieselbe Kamera dort nicht wieder und würde sie doppelt aufnehmen.
 - Von Hand gestartete Profile laufen bis zum Stopp. Nach einem Neustart von Home Assistant werden laufende Profile wieder erkannt. Ein von Hand gestartetes Profil mit Auslöser folgt danach wieder seinem Auslöser.
 - Wird eine Kamera-Entity umbenannt, ziehen die Profile automatisch mit.
+
+## Grundeinstellungen
+
+Unter **Einstellungen → Geräte & Dienste → Cam Profile → Konfigurieren** (Zahnrad) legst du Werte fest, die für alle Profile gelten: Zielordner, Dateinamen-Muster, Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne.
+
+- **Leer lassen im Profil:** Es gilt die Grundeinstellung. Sie gilt live, ändert sich der Standard, ziehen alle Profile ohne eigenen Wert mit.
+- **Im Profil ausfüllen:** Der Wert überschreibt nur dieses Profil. Die Grundeinstellung bleibt unverändert. Auch `0` ist ein eigener Wert (Nachlauf 0 überschreibt einen Standard von 30 s).
+- Die Formulare zeigen den aktuellen Standard in der Beschreibung.
+- Name, Kameras und Auslöser gibt es immer nur pro Profil.
+
+Zeitfenster, Wochentage und Sonne wirken als Grundeinstellung auch auf Profile **ohne Auslöser**: Ein solches Profil nimmt dann von allein in dieser Zeit auf und hat keinen Schalter „Von Hand aufnehmen“. Zum Überschreiben im Profil: Von = bis (ganztägig), alle sieben Wochentage und bei Sonne „egal“ machen das Profil wieder zum Handprofil.
 
 ## Entities und Dienste
 
@@ -120,6 +132,8 @@ A profile decides **where** which cameras record and **when**: continuously, at 
 - **App `cam_profile_recorder`:** writes the streams to disk, supervises them and restarts on stalls.
 
 **Profile settings:** target folder, cameras, file name pattern (`{cam}`, `{short}`, `{profile}`, `%CCYY %MM %DD %hh %mm %ss`), triggers (any "on" records), run-on time, maximum length, time window and day/night. Without triggers and window a profile only starts by hand. A camera never records in two profiles at once, the first profile to start keeps it.
+
+**Defaults and weekdays:** under *Configure* (gear) you set defaults for folder, pattern, run-on, maximum length, time window, weekdays and sun. An empty field in a profile takes the default, a filled field overrides it for that profile only. Profiles can also be limited to weekdays.
 
 **Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and time window also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
 

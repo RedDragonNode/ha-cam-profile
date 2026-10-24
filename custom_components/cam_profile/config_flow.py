@@ -1,4 +1,4 @@
-"""Config-Flow (Verbindung zum Add-on) und Untereinträge (Aufnahme-Profile)."""
+"""Config-Flow (Verbindung), Grundeinstellungen (Konfigurieren) und Untereinträge (Aufnahme-Profile)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
     ConfigSubentryFlow,
+    OptionsFlow,
     SubentryFlowResult,
 )
 from homeassistant.const import CONF_NAME
@@ -31,20 +32,23 @@ from .const import (
     CONF_TIME_FROM,
     CONF_TIME_TO,
     CONF_TRIGGERS,
-    DEFAULT_PATTERN,
+    CONF_WEEKDAYS,
     DEFAULT_RECORDER_URL,
     DOMAIN,
+    MINOR_VERSION,
     SUBENTRY_PROFILE,
-    SUN_ANY,
     SUN_DAY,
     SUN_NIGHT,
+    WEEKDAYS,
 )
 from .recorder_client import RecorderAuthError, RecorderClient, RecorderError
 
 _TEXT = selector.TextSelector()
 _SECRET = selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD))
 
-_SUN_OPTIONS = {"any": SUN_ANY, SUN_DAY: SUN_DAY, SUN_NIGHT: SUN_NIGHT}
+# Auswahl in der Oberfläche -> gespeicherter Wert ("egal" wird als leerer Text gespeichert und überschreibt dann auch)
+_SUN_OPTIONS = {"any": "", SUN_DAY: SUN_DAY, SUN_NIGHT: SUN_NIGHT}
+_SUN_SUGGESTION = {"": "any", SUN_DAY: SUN_DAY, SUN_NIGHT: SUN_NIGHT}
 
 CONNECTION_SCHEMA = vol.Schema(
     {
@@ -54,6 +58,7 @@ CONNECTION_SCHEMA = vol.Schema(
 )
 
 
+# ----------------------------------------------------------------- Bausteine
 def _num(hi: int, unit: str) -> selector.NumberSelector:
     return selector.NumberSelector(
         selector.NumberSelectorConfig(
@@ -62,8 +67,76 @@ def _num(hi: int, unit: str) -> selector.NumberSelector:
     )
 
 
+def _folder_select(options: list[str]) -> selector.SelectSelector:
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=[selector.SelectOptionDict(value=o, label=o) for o in options],
+            custom_value=True,
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
+def _weekday_select() -> selector.SelectSelector:
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=list(WEEKDAYS),
+            multiple=True,
+            translation_key="weekdays",
+            mode=selector.SelectSelectorMode.LIST,
+        )
+    )
+
+
+def _sun_select() -> selector.SelectSelector:
+    return selector.SelectSelector(
+        selector.SelectSelectorConfig(
+            options=list(_SUN_OPTIONS),
+            translation_key="sun_window",
+            mode=selector.SelectSelectorMode.DROPDOWN,
+        )
+    )
+
+
+def _how_data(user_input: Mapping[str, Any]) -> dict[str, Any]:
+    """Gefüllte Felder (Ordner, Muster, Nachlauf, Höchstdauer). Leer heißt: die Grundeinstellung gilt."""
+    data: dict[str, Any] = {}
+    if folder := "/".join(logic.split_path(user_input.get(CONF_FOLDER) or "")):
+        data[CONF_FOLDER] = folder
+    if pattern := (user_input.get(CONF_PATTERN) or "").strip():
+        data[CONF_PATTERN] = pattern
+    for key in (CONF_AFTER, CONF_MAX_MINUTES):
+        if user_input.get(key) is not None:
+            data[key] = int(user_input[key])
+    return data
+
+
+def _when_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    """Gefüllte Felder (Zeitfenster, Wochentage, Sonne) und Fehler. Leer heißt: die Grundeinstellung gilt."""
+    data: dict[str, Any] = {}
+    errors: dict[str, str] = {}
+    start, end = user_input.get(CONF_TIME_FROM) or "", user_input.get(CONF_TIME_TO) or ""
+    if bool(start) != bool(end):
+        errors[CONF_TIME_TO] = "time_both"
+    elif start:
+        data[CONF_TIME_FROM], data[CONF_TIME_TO] = start, end
+    if days := [day for day in WEEKDAYS if day in (user_input.get(CONF_WEEKDAYS) or [])]:
+        data[CONF_WEEKDAYS] = days
+    if sun := user_input.get(CONF_SUN):
+        data[CONF_SUN] = _SUN_OPTIONS.get(sun, "")
+    return data, errors
+
+
+def _suggestions(current: Mapping[str, Any]) -> dict[str, Any]:
+    """Vorbelegung eines Formulars: nur was gesetzt ist, der Rest bleibt leer (= Grundeinstellung)."""
+    values = dict(current)
+    if CONF_SUN in values:
+        values[CONF_SUN] = _SUN_SUGGESTION.get(values[CONF_SUN], "any")
+    return values
+
+
 async def _check_recorder(hass: HomeAssistant, url: str, key: str) -> str | None:
-    """Fehlerschlüssel der Verbindungsprüfung, None wenn das Add-on antwortet."""
+    """Fehlerschlüssel der Verbindungsprüfung, None wenn die App antwortet."""
     try:
         await RecorderClient(async_get_clientsession(hass), url, key).status()
     except RecorderAuthError:
@@ -73,8 +146,28 @@ async def _check_recorder(hass: HomeAssistant, url: str, key: str) -> str | None
     return None
 
 
+async def _folder_options(hass: HomeAssistant, entry: ConfigEntry) -> list[str]:
+    """Alle Ordner des Recorders bis zwei Ebenen ('Haupt' und 'Haupt/Unter') als eine Auswahlliste.
+
+    Ist der Recorder nicht erreichbar, bleibt die Liste leer und der Name lässt sich von Hand eintippen.
+    """
+    try:
+        client = RecorderClient(
+            async_get_clientsession(hass), entry.data[CONF_RECORDER_URL], entry.data[CONF_RECORDER_KEY]
+        )
+        out: list[str] = []
+        for main in await client.list_dirs([]):
+            out.append(main)
+            out.extend(f"{main}/{sub}" for sub in await client.list_dirs([main]))
+    except RecorderError:
+        return []
+    return out
+
+
+# ------------------------------------------------------------------ Verbindung
 class CamProfileConfigFlow(ConfigFlow, domain=DOMAIN):
     VERSION = 1
+    MINOR_VERSION = MINOR_VERSION
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
@@ -128,46 +221,81 @@ class CamProfileConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return CamProfileOptionsFlow()
+
     @classmethod
     @callback
     def async_get_supported_subentry_types(cls, config_entry: ConfigEntry) -> dict[str, type[ConfigSubentryFlow]]:
         return {SUBENTRY_PROFILE: ProfileSubentryFlow}
 
 
-def _folder_select(options: list[str]) -> selector.SelectSelector:
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(
-            options=[selector.SelectOptionDict(value=o, label=o) for o in options],
-            custom_value=True,
-            mode=selector.SelectSelectorMode.DROPDOWN,
+# --------------------------------------------------------- Grundeinstellungen
+class CamProfileOptionsFlow(OptionsFlow):
+    """Grundeinstellungen, die für alle Profile gelten, solange ein Profil das Feld nicht selbst füllt.
+
+    Speichern lädt die Integration über ihren Update-Listener neu.
+    """
+
+    _how: dict[str, Any]
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            self._how = _how_data(user_input)
+            return await self.async_step_when()
+        schema = vol.Schema(
+            {
+                vol.Optional(CONF_FOLDER): _folder_select(await _folder_options(self.hass, self.config_entry)),
+                vol.Optional(CONF_PATTERN): _TEXT,
+                vol.Optional(CONF_AFTER): _num(3600, "s"),
+                vol.Optional(CONF_MAX_MINUTES): _num(1440, "min"),
+            }
         )
-    )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(schema, _suggestions(self.config_entry.options)),
+        )
+
+    async def async_step_when(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            when, errors = _when_data(user_input)
+            if not errors:
+                return self.async_create_entry(data={**self._how, **when})
+        schema = vol.Schema(
+            {
+                vol.Optional(CONF_TIME_FROM): selector.TimeSelector(),
+                vol.Optional(CONF_TIME_TO): selector.TimeSelector(),
+                vol.Optional(CONF_WEEKDAYS): _weekday_select(),
+                vol.Optional(CONF_SUN): _sun_select(),
+            }
+        )
+        return self.async_show_form(
+            step_id="when",
+            data_schema=self.add_suggested_values_to_schema(
+                schema, user_input or _suggestions(self.config_entry.options)
+            ),
+            errors=errors,
+        )
 
 
+# ----------------------------------------------------------------- Profile
 class ProfileSubentryFlow(ConfigSubentryFlow):
-    """Aufnahme-Profil anlegen oder bearbeiten: Schritt 1 wohin und welche Kameras, Schritt 2 wann."""
+    """Aufnahme-Profil anlegen oder bearbeiten: Schritt 1 wohin und welche Kameras, Schritt 2 wann.
+
+    Ein leeres Feld heißt: Es gilt die Grundeinstellung. Gespeichert wird nur, was im Profil gefüllt ist.
+    """
 
     _basics: dict[str, Any]
     _own: str | None = None
 
-    async def _dirs(self, parts: list[str]) -> list[str]:
-        """Ordner aus dem Recorder (leer, wenn er nicht erreichbar ist, die Eingabe von Hand bleibt möglich)."""
-        data = self._get_entry().data
-        try:
-            client = RecorderClient(
-                async_get_clientsession(self.hass), data[CONF_RECORDER_URL], data[CONF_RECORDER_KEY]
-            )
-            return await client.list_dirs(parts)
-        except RecorderError:
-            return []
+    def _defaults(self) -> Mapping[str, Any]:
+        return self._get_entry().options
 
-    async def _folder_options(self) -> list[str]:
-        """Alle Ordner bis zwei Ebenen ('Haupt' und 'Haupt/Unter') als eine Auswahlliste."""
-        out: list[str] = []
-        for main in await self._dirs([]):
-            out.append(main)
-            out.extend(f"{main}/{sub}" for sub in await self._dirs([main]))
-        return out
+    def _placeholders(self) -> dict[str, str]:
+        return logic.describe_defaults(self._defaults(), self.hass.config.language)
 
     def _taken_names(self) -> set[str]:
         return {
@@ -183,36 +311,36 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             name = user_input[CONF_NAME].strip()
-            folder = "/".join(logic.split_path(user_input.get(CONF_FOLDER, "")))
             cams = list(user_input.get(CONF_CAMS) or [])
+            how = _how_data(user_input)
             if not name or logic.norm(name) in self._taken_names():
                 errors[CONF_NAME] = "name_taken"
-            if not folder:
+            if CONF_FOLDER not in how and not self._defaults().get(CONF_FOLDER):
                 errors[CONF_FOLDER] = "folder_required"
             if not cams:
                 errors[CONF_CAMS] = "cams_required"
             if not errors:
                 self._basics = {
                     CONF_NAME: name,
-                    CONF_FOLDER: folder,
                     CONF_CAMS: cams,
-                    CONF_PATTERN: (user_input.get(CONF_PATTERN) or DEFAULT_PATTERN).strip(),
+                    **{k: v for k, v in how.items() if k in (CONF_FOLDER, CONF_PATTERN)},
                 }
                 return await self._step_when(f"{step_id}_when", None, current)
         schema = vol.Schema(
             {
                 vol.Required(CONF_NAME): _TEXT,
-                vol.Required(CONF_FOLDER): _folder_select(await self._folder_options()),
+                vol.Optional(CONF_FOLDER): _folder_select(await _folder_options(self.hass, self._get_entry())),
                 vol.Required(CONF_CAMS): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="camera", multiple=True)
                 ),
-                vol.Optional(CONF_PATTERN, default=DEFAULT_PATTERN): _TEXT,
+                vol.Optional(CONF_PATTERN): _TEXT,
             }
         )
         return self.async_show_form(
             step_id=step_id,
-            data_schema=self.add_suggested_values_to_schema(schema, user_input or current),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or _suggestions(current)),
             errors=errors,
+            description_placeholders=self._placeholders(),
         )
 
     # -------------------------------------------------------------- Schritt 2
@@ -221,19 +349,14 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            time_from, time_to = user_input.get(CONF_TIME_FROM) or "", user_input.get(CONF_TIME_TO) or ""
-            if bool(time_from) != bool(time_to):
-                errors[CONF_TIME_TO] = "time_both"
-            else:
-                sun = user_input.get(CONF_SUN) or "any"
+            when, errors = _when_data(user_input)
+            if not errors:
+                how = _how_data(user_input)
                 data = {
                     **self._basics,
                     CONF_TRIGGERS: list(user_input.get(CONF_TRIGGERS) or []),
-                    CONF_AFTER: int(user_input.get(CONF_AFTER) or 0),
-                    CONF_MAX_MINUTES: int(user_input.get(CONF_MAX_MINUTES) or 0),
-                    CONF_TIME_FROM: time_from,
-                    CONF_TIME_TO: time_to,
-                    CONF_SUN: _SUN_OPTIONS.get(sun, SUN_ANY),
+                    **{k: v for k, v in how.items() if k in (CONF_AFTER, CONF_MAX_MINUTES)},
+                    **when,
                 }
                 unique_id = logic.norm(data[CONF_NAME])
                 if self._own is None:
@@ -256,21 +379,15 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
                 vol.Optional(CONF_MAX_MINUTES): _num(1440, "min"),
                 vol.Optional(CONF_TIME_FROM): selector.TimeSelector(),
                 vol.Optional(CONF_TIME_TO): selector.TimeSelector(),
-                vol.Optional(CONF_SUN, default="any"): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=list(_SUN_OPTIONS),
-                        translation_key="sun_window",
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                    )
-                ),
+                vol.Optional(CONF_WEEKDAYS): _weekday_select(),
+                vol.Optional(CONF_SUN): _sun_select(),
             }
         )
-        suggested = dict(user_input or current)
-        suggested[CONF_SUN] = suggested.get(CONF_SUN) or "any"
         return self.async_show_form(
             step_id=step_id,
-            data_schema=self.add_suggested_values_to_schema(schema, suggested),
+            data_schema=self.add_suggested_values_to_schema(schema, user_input or _suggestions(current)),
             errors=errors,
+            description_placeholders=self._placeholders(),
         )
 
     # ------------------------------------------------------------- Einstiege

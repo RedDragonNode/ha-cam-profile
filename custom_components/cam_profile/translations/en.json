@@ -44,52 +44,54 @@
       "step": {
         "user": {
           "title": "New recording profile",
-          "description": "A profile decides which cameras record into which folder. You can pick any camera that is already set up in Home Assistant, and use the same camera in several profiles. A camera never records in two profiles at the same time though, the first profile to start keeps it. In the file name pattern you can use the placeholders cam (camera), short (short code) and profile (profile), each in curly braces, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
+          "description": "A profile decides which cameras record into which folder. You can pick any camera that is already set up in Home Assistant, and use the same camera in several profiles. A camera never records in two profiles at the same time though, the first profile to start keeps it. An empty field takes the default (currently: target folder {default_folder}, pattern {default_pattern}). In the file name pattern you can use the placeholders cam (camera), short (short code) and profile (profile), each in curly braces, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (e.g. Stairs)",
-            "folder": "Target folder (pick one or type your own, subfolders like Security/Stairs work too)",
+            "folder": "Target folder (empty = default; pick one or type your own, subfolders like Security/Stairs work too)",
             "cams": "Cameras",
-            "pattern": "File name pattern"
+            "pattern": "File name pattern (empty = default)"
           }
         },
         "user_when": {
           "title": "When to record?",
-          "description": "Without triggers and without a time window the profile only starts by hand. With only a time window or sun condition it records continuously during that time. With triggers, for example a motion sensor, it records as long as one is \"on\" (and the time window is open).",
+          "description": "Without triggers and without a restriction (time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. An empty field takes the default (currently: run-on {default_after}, maximum length {default_max}, time window {default_window}, weekdays {default_weekdays}, sun {default_sun}). To override: from = until means all day, all seven weekdays means every day, \"any time\" for sun.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
-            "after_seconds": "Run-on after \"off\"",
-            "max_minutes": "Maximum length per recording (0 = unlimited)",
-            "time_from": "Only from (time)",
+            "after_seconds": "Run-on after \"off\" (empty = default)",
+            "max_minutes": "Maximum length per recording (0 = unlimited, empty = default)",
+            "time_from": "Only from (time, empty = default)",
             "time_to": "Only until (time)",
-            "sun": "Sun"
+            "weekdays": "Weekdays (empty = default)",
+            "sun": "Sun (empty = default)"
           }
         },
         "reconfigure": {
           "title": "Edit recording profile",
-          "description": "A profile decides which cameras record into which folder. In the file name pattern you can use the placeholders cam (camera), short (short code) and profile (profile), each in curly braces, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
+          "description": "A profile decides which cameras record into which folder. An empty field takes the default (currently: target folder {default_folder}, pattern {default_pattern}). In the file name pattern you can use the placeholders cam (camera), short (short code) and profile (profile), each in curly braces, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (e.g. Stairs)",
-            "folder": "Target folder (pick one or type your own, subfolders like Security/Stairs work too)",
+            "folder": "Target folder (empty = default; pick one or type your own, subfolders like Security/Stairs work too)",
             "cams": "Cameras",
-            "pattern": "File name pattern"
+            "pattern": "File name pattern (empty = default)"
           }
         },
         "reconfigure_when": {
           "title": "When to record?",
-          "description": "Without triggers and without a time window the profile only starts by hand. With only a time window or sun condition it records continuously during that time. With triggers it records as long as one is \"on\" (and the time window is open).",
+          "description": "Without triggers and without a restriction (time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. An empty field takes the default (currently: run-on {default_after}, maximum length {default_max}, time window {default_window}, weekdays {default_weekdays}, sun {default_sun}). To override: from = until means all day, all seven weekdays means every day, \"any time\" for sun.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
-            "after_seconds": "Run-on after \"off\"",
-            "max_minutes": "Maximum length per recording (0 = unlimited)",
-            "time_from": "Only from (time)",
+            "after_seconds": "Run-on after \"off\" (empty = default)",
+            "max_minutes": "Maximum length per recording (0 = unlimited, empty = default)",
+            "time_from": "Only from (time, empty = default)",
             "time_to": "Only until (time)",
-            "sun": "Sun"
+            "weekdays": "Weekdays (empty = default)",
+            "sun": "Sun (empty = default)"
           }
         }
       },
       "error": {
         "name_taken": "This name already exists (or is empty).",
-        "folder_required": "Please enter a target folder.",
+        "folder_required": "Please enter a target folder or set one in the defaults.",
         "cams_required": "Please choose at least one camera.",
         "time_both": "Please set \"from\" and \"until\" together."
       },
@@ -141,6 +143,17 @@
         "day": "daytime only (sun above the horizon)",
         "night": "night only (sun below the horizon)"
       }
+    },
+    "weekdays": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
     }
   },
   "services": {
@@ -183,6 +196,33 @@
     "profile_lost": {
       "title": "Recording profile ended unexpectedly",
       "description": "The recorder ended the profile \"{profile}\". Reason: {reason}. The profile starts again when its trigger or time window asks for it, or by hand with \"Start profile\"."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Defaults: how to record",
+        "description": "These values apply to every profile that does not fill the field itself. When a profile changes a value, that only overrides it for this profile and the default stays unchanged. An empty field means not set.",
+        "data": {
+          "folder": "Default target folder (pick one or type your own)",
+          "pattern": "Default file name pattern",
+          "after_seconds": "Default run-on after \"off\"",
+          "max_minutes": "Default maximum length per recording (0 = unlimited)"
+        }
+      },
+      "when": {
+        "title": "Defaults: when to record",
+        "description": "Careful: a profile without its own trigger records on its own as soon as a time window, weekdays or sun apply here and the profile does not override them. To override in the profile, set \"from\" and \"until\" to the same time (all day), pick all seven weekdays, or choose \"any time\" for sun.",
+        "data": {
+          "time_from": "Default: only from (time)",
+          "time_to": "Default: only until (time)",
+          "weekdays": "Default weekdays (empty = every day)",
+          "sun": "Default sun"
+        }
+      }
+    },
+    "error": {
+      "time_both": "Please set \"from\" and \"until\" together."
     }
   }
 }

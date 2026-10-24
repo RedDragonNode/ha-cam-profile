@@ -34,13 +34,16 @@ from .const import (
     CONF_TIME_FROM,
     CONF_TIME_TO,
     CONF_TRIGGERS,
+    CONF_WEEKDAYS,
     DEFAULT_PATTERN,
+    DEFAULTABLE,
     DOMAIN,
     POLL_SECONDS,
     SUBENTRY_PROFILE,
     SUN_ANY,
     SUN_DAY,
     TICK_SECONDS,
+    WEEKDAYS,
 )
 from .recorder_client import RecorderAuthError, RecorderClient, RecorderError
 
@@ -53,7 +56,7 @@ STATUS_ERROR = "error"
 
 @dataclass
 class ProfileCfg:
-    """Aufnahme-Profil: wohin, welche Kameras, wann."""
+    """Aufnahme-Profil mit den geltenden Werten (eigene, sonst Grundeinstellung, sonst eingebaute)."""
 
     subentry_id: str
     name: str
@@ -65,15 +68,26 @@ class ProfileCfg:
     max_min: int = 0
     time_from: str = ""
     time_to: str = ""
+    weekdays: list[str] = field(default_factory=list)  # leer = jeden Tag
     sun: str = SUN_ANY
+    inherited: list[str] = field(default_factory=list)  # Felder, die von den Grundeinstellungen kommen
+
+    @property
+    def has_time_window(self) -> bool:
+        return logic.has_time_window(self.time_from, self.time_to)
+
+    @property
+    def weekday_limited(self) -> bool:
+        return 0 < len(set(self.weekdays)) < len(WEEKDAYS)
 
     @property
     def has_window(self) -> bool:
-        return bool((self.time_from and self.time_to) or self.sun)
+        """Zeitfenster, Sonne oder Wochentage schränken ein: dann läuft das Profil auch ohne Auslöser von allein."""
+        return self.has_time_window or bool(self.sun) or self.weekday_limited
 
     @property
     def manual_only(self) -> bool:
-        """Ohne Auslöser und ohne Zeitfenster startet und stoppt das Profil nur von Hand."""
+        """Ohne Auslöser und ohne Einschränkung startet und stoppt das Profil nur von Hand."""
         return not self.triggers and not self.has_window
 
 
@@ -104,18 +118,21 @@ class ProfileManager:
             if sub.subentry_type != SUBENTRY_PROFILE:
                 continue
             d = sub.data
+            values, inherited = logic.resolve(d, self.entry.options, DEFAULTABLE)
             self.profiles[sid] = ProfileCfg(
                 subentry_id=sid,
                 name=d[CONF_NAME],
-                folder=logic.split_path(d.get(CONF_FOLDER, "")),
+                folder=logic.split_path(values.get(CONF_FOLDER, "")),
                 cams=list(d.get(CONF_CAMS) or []),
-                pattern=d.get(CONF_PATTERN) or DEFAULT_PATTERN,
+                pattern=values.get(CONF_PATTERN) or DEFAULT_PATTERN,
                 triggers=list(d.get(CONF_TRIGGERS) or []),
-                after_s=int(d.get(CONF_AFTER) or 0),
-                max_min=int(d.get(CONF_MAX_MINUTES) or 0),
-                time_from=d.get(CONF_TIME_FROM) or "",
-                time_to=d.get(CONF_TIME_TO) or "",
-                sun=d.get(CONF_SUN) or SUN_ANY,
+                after_s=int(values.get(CONF_AFTER) or 0),
+                max_min=int(values.get(CONF_MAX_MINUTES) or 0),
+                time_from=values.get(CONF_TIME_FROM) or "",
+                time_to=values.get(CONF_TIME_TO) or "",
+                weekdays=[day for day in WEEKDAYS if day in (values.get(CONF_WEEKDAYS) or [])],
+                sun=values.get(CONF_SUN) or SUN_ANY,
+                inherited=inherited,
             )
 
     @property
@@ -260,7 +277,9 @@ class ProfileManager:
         return any((st := self.hass.states.get(e)) is not None and st.state == STATE_ON for e in p.triggers)
 
     def _window_open(self, p: ProfileCfg, now: datetime) -> bool:
-        if p.time_from and p.time_to and not logic.in_time_window(now, p.time_from, p.time_to):
+        if p.weekday_limited and WEEKDAYS[logic.effective_weekday(now, p.time_from, p.time_to)] not in p.weekdays:
+            return False
+        if p.has_time_window and not logic.in_time_window(now, p.time_from, p.time_to):
             return False
         if p.sun:
             sun = self.hass.states.get("sun.sun")

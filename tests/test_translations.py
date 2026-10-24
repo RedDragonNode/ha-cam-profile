@@ -10,7 +10,19 @@ import pytest
 
 TRANSLATIONS = Path(__file__).resolve().parents[1] / "custom_components" / "cam_profile" / "translations"
 # Das Frontend liest jede geschweifte Klammer als Platzhalter und meldet einen Fehler, wenn der Wert fehlt.
-ALLOWED_PLACEHOLDERS = {"name", "profile", "reason", "details"}
+ALLOWED_PLACEHOLDERS = {
+    "name",
+    "profile",
+    "reason",
+    "details",
+    "default_folder",
+    "default_pattern",
+    "default_after",
+    "default_max",
+    "default_window",
+    "default_weekdays",
+    "default_sun",
+}
 
 
 def _flatten(node: object, prefix: str = "") -> dict[str, str]:

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -12,7 +15,21 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
-from .const import ATTR_PROFILE, DOMAIN, SERVICE_START, SERVICE_STOP
+from .const import (
+    ATTR_PROFILE,
+    CONF_AFTER,
+    CONF_MAX_MINUTES,
+    CONF_PATTERN,
+    CONF_SUN,
+    CONF_TIME_FROM,
+    CONF_TIME_TO,
+    DEFAULT_PATTERN,
+    DOMAIN,
+    MINOR_VERSION,
+    SERVICE_START,
+    SERVICE_STOP,
+    SUBENTRY_PROFILE,
+)
 from .manager import ProfileManager
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH]
@@ -37,6 +54,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     schema = vol.Schema({vol.Required(ATTR_PROFILE): cv.string})
     for name, handler in ((SERVICE_START, start_profile), (SERVICE_STOP, stop_profile)):
         hass.services.async_register(DOMAIN, name, handler, schema, supports_response=SupportsResponse.OPTIONAL)
+    return True
+
+
+def _without_old_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Version 0.2 speicherte jedes Feld im Profil. Werte, die nur der alte Standard waren, werden wieder „geerbt“."""
+    cleaned = dict(data)
+    for key, old_default in ((CONF_AFTER, 0), (CONF_MAX_MINUTES, 0), (CONF_SUN, ""), (CONF_PATTERN, DEFAULT_PATTERN)):
+        if cleaned.get(key) == old_default:
+            del cleaned[key]
+    if not cleaned.get(CONF_TIME_FROM) and not cleaned.get(CONF_TIME_TO):
+        cleaned.pop(CONF_TIME_FROM, None)
+        cleaned.pop(CONF_TIME_TO, None)
+    return cleaned
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """1.1 -> 1.2: Profile speichern nur noch, was sie selbst überschreiben, damit Grundeinstellungen greifen."""
+    if entry.version == 1 and entry.minor_version < MINOR_VERSION:
+        for sub in list(entry.subentries.values()):
+            if sub.subentry_type == SUBENTRY_PROFILE and (data := _without_old_defaults(sub.data)) != dict(sub.data):
+                hass.config_entries.async_update_subentry(entry, sub, data=data)
+        hass.config_entries.async_update_entry(entry, minor_version=MINOR_VERSION)
     return True
 
 
