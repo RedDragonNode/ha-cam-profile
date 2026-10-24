@@ -1,4 +1,4 @@
-"""Config-Flow (Verbindung), Grundeinstellungen (Konfigurieren) und Untereinträge (Aufnahme-Profile)."""
+"""Config-Flow (Verbindung) und Untereinträge (Aufnahme-Profile mit ihren Anlege-Werten)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
     ConfigSubentryFlow,
-    OptionsFlow,
     SubentryFlowResult,
 )
 from homeassistant.const import CONF_NAME
@@ -33,6 +32,7 @@ from .const import (
     CONF_TIME_TO,
     CONF_TRIGGERS,
     CONF_WEEKDAYS,
+    DEFAULT_PATTERN,
     DEFAULT_RECORDER_URL,
     DOMAIN,
     MINOR_VERSION,
@@ -99,39 +99,37 @@ def _sun_select() -> selector.SelectSelector:
 
 
 def _how_data(user_input: Mapping[str, Any]) -> dict[str, Any]:
-    """Gefüllte Felder (Ordner, Muster, Nachlauf, Höchstdauer). Leer heißt: die Grundeinstellung gilt."""
-    data: dict[str, Any] = {}
-    if folder := "/".join(logic.split_path(user_input.get(CONF_FOLDER) or "")):
-        data[CONF_FOLDER] = folder
-    if pattern := (user_input.get(CONF_PATTERN) or "").strip():
-        data[CONF_PATTERN] = pattern
-    for key in (CONF_AFTER, CONF_MAX_MINUTES):
-        if user_input.get(key) is not None:
-            data[key] = int(user_input[key])
-    return data
+    """Zielordner und Dateinamen-Muster (ohne Muster gilt das eingebaute)."""
+    return {
+        CONF_FOLDER: "/".join(logic.split_path(user_input.get(CONF_FOLDER) or "")),
+        CONF_PATTERN: (user_input.get(CONF_PATTERN) or "").strip() or DEFAULT_PATTERN,
+    }
 
 
 def _when_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    """Gefüllte Felder (Zeitfenster, Wochentage, Sonne) und Fehler. Leer heißt: die Grundeinstellung gilt."""
-    data: dict[str, Any] = {}
+    """Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne sowie die Fehler dazu."""
     errors: dict[str, str] = {}
     start, end = user_input.get(CONF_TIME_FROM) or "", user_input.get(CONF_TIME_TO) or ""
     if bool(start) != bool(end):
         errors[CONF_TIME_TO] = "time_both"
-    elif start:
-        data[CONF_TIME_FROM], data[CONF_TIME_TO] = start, end
-    if days := [day for day in WEEKDAYS if day in (user_input.get(CONF_WEEKDAYS) or [])]:
-        data[CONF_WEEKDAYS] = days
-    if sun := user_input.get(CONF_SUN):
-        data[CONF_SUN] = _SUN_OPTIONS.get(sun, "")
+    data = {
+        CONF_AFTER: int(user_input.get(CONF_AFTER) or 0),
+        CONF_MAX_MINUTES: int(user_input.get(CONF_MAX_MINUTES) or 0),
+        CONF_TIME_FROM: start if start and end else "",
+        CONF_TIME_TO: end if start and end else "",
+        CONF_WEEKDAYS: [day for day in WEEKDAYS if day in (user_input.get(CONF_WEEKDAYS) or [])],
+        CONF_SUN: _SUN_OPTIONS.get(user_input.get(CONF_SUN) or "any", ""),
+    }
     return data, errors
 
 
+# Vorbelegung beim Anlegen (und für Felder, die ein älteres Profil nicht gespeichert hat)
+_NEW_PROFILE = {CONF_PATTERN: DEFAULT_PATTERN, CONF_AFTER: 0, CONF_MAX_MINUTES: 0, CONF_SUN: ""}
+
+
 def _suggestions(current: Mapping[str, Any]) -> dict[str, Any]:
-    """Vorbelegung eines Formulars: nur was gesetzt ist, der Rest bleibt leer (= Grundeinstellung)."""
-    values = dict(current)
-    if CONF_SUN in values:
-        values[CONF_SUN] = _SUN_SUGGESTION.get(values[CONF_SUN], "any")
+    values = {**_NEW_PROFILE, **current}
+    values[CONF_SUN] = _SUN_SUGGESTION.get(values[CONF_SUN], "any")
     return values
 
 
@@ -221,81 +219,29 @@ class CamProfileConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        return CamProfileOptionsFlow()
-
     @classmethod
     @callback
     def async_get_supported_subentry_types(cls, config_entry: ConfigEntry) -> dict[str, type[ConfigSubentryFlow]]:
         return {SUBENTRY_PROFILE: ProfileSubentryFlow}
 
 
-# --------------------------------------------------------- Grundeinstellungen
-class CamProfileOptionsFlow(OptionsFlow):
-    """Grundeinstellungen, die für alle Profile gelten, solange ein Profil das Feld nicht selbst füllt.
-
-    Speichern lädt die Integration über ihren Update-Listener neu.
-    """
-
-    _how: dict[str, Any]
-
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        if user_input is not None:
-            self._how = _how_data(user_input)
-            return await self.async_step_when()
-        schema = vol.Schema(
-            {
-                vol.Optional(CONF_FOLDER): _folder_select(await _folder_options(self.hass, self.config_entry)),
-                vol.Optional(CONF_PATTERN): _TEXT,
-                vol.Optional(CONF_AFTER): _num(3600, "s"),
-                vol.Optional(CONF_MAX_MINUTES): _num(1440, "min"),
-            }
-        )
-        return self.async_show_form(
-            step_id="init",
-            data_schema=self.add_suggested_values_to_schema(schema, _suggestions(self.config_entry.options)),
-        )
-
-    async def async_step_when(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            when, errors = _when_data(user_input)
-            if not errors:
-                return self.async_create_entry(data={**self._how, **when})
-        schema = vol.Schema(
-            {
-                vol.Optional(CONF_TIME_FROM): selector.TimeSelector(),
-                vol.Optional(CONF_TIME_TO): selector.TimeSelector(),
-                vol.Optional(CONF_WEEKDAYS): _weekday_select(),
-                vol.Optional(CONF_SUN): _sun_select(),
-            }
-        )
-        return self.async_show_form(
-            step_id="when",
-            data_schema=self.add_suggested_values_to_schema(
-                schema, user_input or _suggestions(self.config_entry.options)
-            ),
-            errors=errors,
-        )
-
-
 # ----------------------------------------------------------------- Profile
 class ProfileSubentryFlow(ConfigSubentryFlow):
     """Aufnahme-Profil anlegen oder bearbeiten: Schritt 1 wohin und welche Kameras, Schritt 2 wann.
 
-    Ein leeres Feld heißt: Es gilt die Grundeinstellung. Gespeichert wird nur, was im Profil gefüllt ist.
+    Was hier steht, sind die Anlege-Werte des Profils. Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne
+    lassen sich später auf der Geräteseite des Profils überschreiben, ohne dass sich diese Werte ändern.
     """
 
     _basics: dict[str, Any]
     _own: str | None = None
 
-    def _defaults(self) -> Mapping[str, Any]:
-        return self._get_entry().options
-
     def _placeholders(self) -> dict[str, str]:
-        return logic.describe_defaults(self._defaults(), self.hass.config.language)
+        manager = getattr(self._get_entry(), "runtime_data", None)
+        profile = manager.profiles.get(self._own) if manager and self._own else None
+        return {
+            "overridden": logic.describe_overrides(profile.overridden if profile else [], self.hass.config.language)
+        }
 
     def _taken_names(self) -> set[str]:
         return {
@@ -315,21 +261,17 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
             how = _how_data(user_input)
             if not name or logic.norm(name) in self._taken_names():
                 errors[CONF_NAME] = "name_taken"
-            if CONF_FOLDER not in how and not self._defaults().get(CONF_FOLDER):
+            if not how[CONF_FOLDER]:
                 errors[CONF_FOLDER] = "folder_required"
             if not cams:
                 errors[CONF_CAMS] = "cams_required"
             if not errors:
-                self._basics = {
-                    CONF_NAME: name,
-                    CONF_CAMS: cams,
-                    **{k: v for k, v in how.items() if k in (CONF_FOLDER, CONF_PATTERN)},
-                }
+                self._basics = {CONF_NAME: name, CONF_CAMS: cams, **how}
                 return await self._step_when(f"{step_id}_when", None, current)
         schema = vol.Schema(
             {
                 vol.Required(CONF_NAME): _TEXT,
-                vol.Optional(CONF_FOLDER): _folder_select(await _folder_options(self.hass, self._get_entry())),
+                vol.Required(CONF_FOLDER): _folder_select(await _folder_options(self.hass, self._get_entry())),
                 vol.Required(CONF_CAMS): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="camera", multiple=True)
                 ),
@@ -351,11 +293,9 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
         if user_input is not None:
             when, errors = _when_data(user_input)
             if not errors:
-                how = _how_data(user_input)
                 data = {
                     **self._basics,
                     CONF_TRIGGERS: list(user_input.get(CONF_TRIGGERS) or []),
-                    **{k: v for k, v in how.items() if k in (CONF_AFTER, CONF_MAX_MINUTES)},
                     **when,
                 }
                 unique_id = logic.norm(data[CONF_NAME])

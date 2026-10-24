@@ -10,6 +10,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.components.diagnostics import get_diagnostics_for_config_entry
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
+from custom_components.cam_profile.const import WEEKDAYS
+
 from .conftest import KEY, add_cameras, make_profile, setup_entry
 
 
@@ -23,13 +25,27 @@ async def test_entities_for_hub_profiles_and_cameras(hass: HomeAssistant) -> Non
         hass, [make_profile("Eins", ["camera.a"]), make_profile("Zwei", ["camera.a", "camera.b"])]
     )
     eid = entry.entry_id
-    assert _unique_ids(hass, entry) == {
+    # Einstellungen auf der Geräteseite: Zahlen, Uhrzeiten, Sonne, sieben Wochentage und der Knopf zum Zurücksetzen
+    settings = {
+        f"{eid}_{sid}_{key}"
+        for sid in ("p_Eins", "p_Zwei")
+        for key in (
+            "after_seconds",
+            "max_minutes",
+            "time_from",
+            "time_to",
+            "sun",
+            "reset",
+            *(f"weekday_{day}" for day in WEEKDAYS),
+        )
+    }
+    assert _unique_ids(hass, entry) == settings | {
         f"{eid}_recorder_online",
         f"{eid}_status",
         f"{eid}_recorder_free_space",
         f"{eid}_p_Eins_recording",
         f"{eid}_p_Zwei_recording",
-        f"{eid}_p_Eins_manual",  # Profile ohne Auslöser und Zeitfenster bekommen einen Schalter
+        f"{eid}_p_Eins_manual",  # Profile ohne Auslöser und Einschränkung bekommen einen Schalter
         f"{eid}_p_Zwei_manual",
         f"{eid}_cam_camera.a_recording",  # eine Kamera in zwei Profilen bekommt nur einen Sensor
         f"{eid}_cam_camera.b_recording",

@@ -1,4 +1,4 @@
-"""Schalter: Profile ohne Auslöser und ohne Zeitfenster von Hand ein- und ausschalten."""
+"""Schalter: Profile von Hand aufnehmen lassen und Wochentage des Profils."""
 
 from __future__ import annotations
 
@@ -6,10 +6,12 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import CamProfileConfigEntry
-from .entity import CamProfileEntity, profile_device
+from .const import CONF_WEEKDAYS, DOMAIN, WEEKDAYS
+from .entity import ProfileEntity, ProfileSettingEntity
 from .manager import ProfileCfg, ProfileManager
 
 
@@ -18,28 +20,58 @@ async def async_setup_entry(
 ) -> None:
     m = entry.runtime_data
     for sid, profile in m.profiles.items():
+        entities: list[SwitchEntity] = [ProfileWeekdaySwitch(m, profile, day) for day in WEEKDAYS]
         if profile.manual_only:
-            async_add_entities([ProfileManualSwitch(m, profile)], config_subentry_id=sid)
+            entities.append(ProfileManualSwitch(m, profile))
+        async_add_entities(entities, config_subentry_id=sid)
 
 
-class ProfileManualSwitch(CamProfileEntity, SwitchEntity):
-    """Startet und beendet die Aufnahme des Profils. Bei Profilen mit Auslöser oder Zeitfenster gibt es ihn nicht,
+class ProfileManualSwitch(ProfileEntity, SwitchEntity):
+    """Startet und beendet die Aufnahme des Profils. Bei Profilen mit Auslöser oder Einschränkung gibt es ihn nicht,
     denn dort würde der Auslöser den Schalter sofort wieder umlegen."""
 
     _attr_translation_key = "profile_manual"
 
     def __init__(self, m: ProfileManager, profile: ProfileCfg) -> None:
-        super().__init__(m)
-        self.profile = profile
-        self._attr_unique_id = f"{m.entry.entry_id}_{profile.subentry_id}_manual"
-        self._attr_device_info = profile_device(m, profile)
+        super().__init__(m, profile, "manual")
 
     @property
     def is_on(self) -> bool:
-        return self.manager.profile_running(self.profile.subentry_id)
+        return self.manager.profile_running(self.sid)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self.manager.async_profile_start(self.profile.subentry_id)
+        await self.manager.async_profile_start(self.sid)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.manager.async_profile_stop(self.profile.subentry_id)
+        await self.manager.async_profile_stop(self.sid)
+
+
+class ProfileWeekdaySwitch(ProfileSettingEntity, SwitchEntity):
+    """Nimmt das Profil an diesem Wochentag auf? Sind alle sieben an, gilt jeder Tag."""
+
+    fields = (CONF_WEEKDAYS,)
+
+    def __init__(self, m: ProfileManager, profile: ProfileCfg, day: str) -> None:
+        super().__init__(m, profile, f"weekday_{day}")
+        self.day = day
+        self._attr_translation_key = f"profile_weekday_{day}"
+
+    def _value_of(self, cfg: ProfileCfg) -> bool:
+        return self.day in (cfg.weekdays or WEEKDAYS)  # keine Auswahl heißt jeden Tag
+
+    @property
+    def is_on(self) -> bool:
+        return self._value_of(self.profile)
+
+    async def _set_day(self, on: bool) -> None:
+        days = set(self.profile.weekdays or WEEKDAYS)
+        days = days | {self.day} if on else days - {self.day}
+        if not days:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="last_weekday")
+        await self.manager.async_override(self.sid, {CONF_WEEKDAYS: [day for day in WEEKDAYS if day in days]})
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._set_day(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._set_day(False)

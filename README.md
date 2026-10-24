@@ -10,7 +10,7 @@
 
 **Aufnahme-Profile für die Kameras, die du schon in Home Assistant hast.** Du richtest keine Kameras neu ein: Im Profil wählst du einfach Kamera-Entities aus beliebigen Integrationen (Reolink, Ctronics, ONVIF, Generic Camera …). Eine Kamera kann in beliebig vielen Profilen stehen.
 
-Ein Profil bestimmt, **wohin** welche Kameras aufnehmen und **wann**: durchgehend, nur nachts, bei Bewegung oder von Hand. Aufgenommen wird der RTSP-Stream direkt in eine Datei, **ohne Neukodierung** (ffmpeg `-c copy`). Das braucht kaum CPU und keine GPU.
+Ein Profil bestimmt, **wohin** welche Kameras aufnehmen und **wann**: durchgehend, nur nachts, an bestimmten Wochentagen, bei Bewegung oder von Hand. Aufgenommen wird der RTSP-Stream direkt in eine Datei, **ohne Neukodierung** (ffmpeg `-c copy`). Das braucht kaum CPU und keine GPU.
 
 | Baustein | Aufgabe |
 |---|---|
@@ -54,28 +54,40 @@ Regeln:
 
 - **Nur Zeitfenster, Wochentage oder Sonne, kein Auslöser:** nimmt in dieser Zeit durchgehend auf (z. B. „bei Nacht“ oder „samstags“).
 - **Auslöser (und Einschränkung):** nimmt auf, solange ein Auslöser „an“ ist und Zeitfenster, Wochentag und Sonne passen.
-- **Nichts angegeben:** nur von Hand, über den Schalter **Von Hand aufnehmen** am Gerät des Profils oder über die Dienste unten.
+- **Nichts angegeben:** nur von Hand, über den Schalter **Von Hand aufnehmen** am Gerät des Profils oder über die Dienste unten. Wochentage, Zeitfenster und Sonne lassen sich später auf der Geräteseite überschreiben, siehe unten.
 - **Eine Kamera nimmt nie in zwei Profilen gleichzeitig auf.** Wer zuerst kommt, behält sie, das andere Profil nimmt ohne sie auf und meldet sie als „busy“. Der Recorder erkennt eine Kamera an ihrer ID, bei Cam Profile ist das die Entity-ID (`camera.…`). Spricht eine andere Integration denselben Recorder mit eigenen Kamera-IDs an (zum Beispiel Cam Recorder Profile), erkennt er dieselbe Kamera dort nicht wieder und würde sie doppelt aufnehmen.
 - Von Hand gestartete Profile laufen bis zum Stopp. Nach einem Neustart von Home Assistant werden laufende Profile wieder erkannt. Ein von Hand gestartetes Profil mit Auslöser folgt danach wieder seinem Auslöser.
 - Wird eine Kamera-Entity umbenannt, ziehen die Profile automatisch mit.
 
-## Grundeinstellungen
+## Anlege-Werte und Überschreiben
 
-Unter **Einstellungen → Geräte & Dienste → Cam Profile → Konfigurieren** (Zahnrad) legst du Werte fest, die für alle Profile gelten: Zielordner, Dateinamen-Muster, Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne.
+Was du beim Anlegen einträgst (und später über das Zahnrad des Profils änderst), sind die **Anlege-Werte** des Profils. Sie bleiben gespeichert, egal was du danach auf der Geräteseite einstellst.
 
-- **Leer lassen im Profil:** Es gilt die Grundeinstellung. Sie gilt live, ändert sich der Standard, ziehen alle Profile ohne eigenen Wert mit.
-- **Im Profil ausfüllen:** Der Wert überschreibt nur dieses Profil. Die Grundeinstellung bleibt unverändert. Auch `0` ist ein eigener Wert (Nachlauf 0 überschreibt einen Standard von 30 s).
-- Die Formulare zeigen den aktuellen Standard in der Beschreibung.
-- Name, Kameras und Auslöser gibt es immer nur pro Profil.
+Auf der Geräteseite des Profils (**Einstellungen → Geräte & Dienste → Cam Profile → Profil …**) steht im Kasten **Konfiguration**:
 
-Zeitfenster, Wochentage und Sonne wirken als Grundeinstellung auch auf Profile **ohne Auslöser**: Ein solches Profil nimmt dann von allein in dieser Zeit auf und hat keinen Schalter „Von Hand aufnehmen“. Zum Überschreiben im Profil: Von = bis (ganztägig), alle sieben Wochentage und bei Sonne „egal“ machen das Profil wieder zum Handprofil.
+| Einstellung | Entity |
+|---|---|
+| Nachlauf nach „aus“ (Sekunden) | `number` |
+| Höchstdauer pro Aufnahme (Minuten, 0 = unbegrenzt) | `number` |
+| Nur von / Nur bis (Uhrzeit, von = bis heißt ganztägig) | zwei `time` |
+| Montag bis Sonntag aufnehmen | sieben `switch`, mindestens ein Tag bleibt an |
+| Sonne: egal, nur bei Tag, nur bei Nacht | `select` |
+| Auf Anlege-Werte zurücksetzen | `button` |
+
+- Die Entities zeigen den **geltenden Wert**. Änderst du ihn, **überschreibst** du damit nur den Anlege-Wert, der im Profil gespeicherte Wert bleibt unverändert. Die Attribute der Entity nennen ihn (`creation_value`) und ob überschrieben wird (`overridden`).
+- Überschreibungen gelten sofort, ohne Neuladen, und überleben Neustarts. Sie liegen getrennt von den Profilen, das Zahnrad des Profils ändert sie nicht. Ändert das Zahnrad einen überschriebenen Wert, gilt weiter die Überschreibung, bis du **Auf Anlege-Werte zurücksetzen** drückst.
+- Beide Enden des Zeitfensters werden immer zusammen überschrieben. Alle sieben Wochentage heißen jeden Tag.
+- Zielordner, Dateinamen-Muster, Kameras und Auslöser lassen sich nur im Profil selbst ändern.
+- Schränkt eine Überschreibung ein Profil **ohne Auslöser** ein (Zeitfenster, Wochentage oder Sonne), nimmt es von allein in dieser Zeit auf und der Schalter „Von Hand aufnehmen“ entfällt. Nach dem Zurücksetzen ist er wieder da. Dafür lädt sich die Integration kurz neu.
+- Die globalen Grundeinstellungen aus Version 0.3 (Zahnrad der Integration) gibt es nicht mehr. Ihre Werte wurden beim Update in die Profile übernommen, damit sich nichts ändert.
 
 ## Entities und Dienste
 
 | Entity | Wo |
 |---|---|
 | `binary_sensor` **Aufnahme** je Profil | am Gerät „Profil …“ (Ordner, seit wann, Kameras) |
-| `switch` **Von Hand aufnehmen** | am Gerät „Profil …“, nur bei Profilen ohne Auslöser und ohne Zeitfenster. Ein: Aufnahme starten, aus: stoppen. Bei Profilen mit Auslöser oder Zeitfenster gibt es ihn nicht, denn der Auslöser würde ihn sofort wieder umlegen |
+| `switch` **Von Hand aufnehmen** | am Gerät „Profil …“, nur bei Profilen ohne Auslöser und ohne Einschränkung (Zeitfenster, Wochentage, Sonne). Ein: Aufnahme starten, aus: stoppen. Bei Profilen mit Auslöser oder Einschränkung gibt es ihn nicht, denn der Auslöser würde ihn sofort wieder umlegen |
+| `number`, `time`, `select`, `switch`, `button` **Konfiguration** | am Gerät „Profil …“: die Einstellungen zum Überschreiben (siehe oben) |
 | `binary_sensor` **Aufnahme** je Kamera | am Gerät der Kamera aus ihrer eigenen Integration, mit den Profilen, in denen sie steht |
 | `binary_sensor` **Recorder erreichbar**, `sensor` **Status**, `sensor` **freier Speicher** | am Gerät „Cam Profile“ |
 
@@ -133,9 +145,9 @@ A profile decides **where** which cameras record and **when**: continuously, at 
 
 **Profile settings:** target folder, cameras, file name pattern (`{cam}`, `{short}`, `{profile}`, `%CCYY %MM %DD %hh %mm %ss`), triggers (any "on" records), run-on time, maximum length, time window and day/night. Without triggers and window a profile only starts by hand. A camera never records in two profiles at once, the first profile to start keeps it.
 
-**Defaults and weekdays:** under *Configure* (gear) you set defaults for folder, pattern, run-on, maximum length, time window, weekdays and sun. An empty field in a profile takes the default, a filled field overrides it for that profile only. Profiles can also be limited to weekdays.
+**Creation values and overrides:** what you enter when you create a profile (or change later with the profile's gear) are its creation values. On the profile's device page, under *Configuration*, you can override run-on, maximum length, time window, weekdays (seven switches) and sun. The page shows the value in effect, changing it only overrides the creation value, which stays stored unchanged. A button resets everything to the creation values. Overrides apply at once and survive restarts. An override that restricts a profile without triggers makes it record on its own and removes its manual switch until you reset it.
 
-**Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and time window also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
+**Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and without a restriction (time window, weekdays, sun) also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
 
 **Install:** add `https://github.com/RedDragonNode/ha-cam-profile` as an app repository (App Store → ⋮ → Repositories) and install *Cam Profile Recorder* with an `api_key` of at least 12 characters. Then add the same URL as a custom *Integration* repository in HACS, download *Cam Profile*, restart Home Assistant and add the integration with the app's address (`http://<hostname>:8099`, hostname from the app's Info page) and key.
 

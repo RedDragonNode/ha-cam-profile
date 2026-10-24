@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from datetime import datetime, timedelta
-from typing import Any
-
-from .const import WEEKDAYS
 
 _UMLAUTE = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "Ä": "ae", "Ö": "oe", "Ü": "ue"})
 
@@ -99,43 +96,27 @@ def effective_weekday(now: datetime, start: str | None, end: str | None) -> int:
     return now.weekday()
 
 
-def resolve(
-    profile: Mapping[str, Any], defaults: Mapping[str, Any], keys: Iterable[str]
-) -> tuple[dict[str, Any], list[str]]:
-    """Wert je Feld: der des Profils, sonst die Grundeinstellung.
-
-    Auch 0 und "" zählen als Wert, nur ein fehlendes Feld erbt.
-    """
-    values: dict[str, Any] = {}
-    inherited: list[str] = []
-    for key in keys:
-        if key in profile:
-            values[key] = profile[key]
-        elif key in defaults:
-            values[key] = defaults[key]
-            inherited.append(key)
-    return values, inherited
-
-
-_WEEKDAY_NAMES = {
-    "de": ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"),
-    "en": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+_FIELD_NAMES = {
+    "de": {
+        "after_seconds": "Nachlauf",
+        "max_minutes": "Höchstdauer",
+        "time_from": "Zeitfenster",
+        "time_to": "Zeitfenster",
+        "weekdays": "Wochentage",
+        "sun": "Sonne",
+    },
+    "en": {
+        "after_seconds": "run-on",
+        "max_minutes": "maximum length",
+        "time_from": "time window",
+        "time_to": "time window",
+        "weekdays": "weekdays",
+        "sun": "sun",
+    },
 }
-_SUN_NAMES = {"de": {"": "egal", "day": "Tag", "night": "Nacht"}, "en": {"": "any", "day": "day", "night": "night"}}
 
 
-def describe_defaults(defaults: Mapping[str, Any], language: str) -> dict[str, str]:
-    """Texte für die Formulare: die aktuell geltenden Grundeinstellungen („–“ = nicht gesetzt)."""
-    lang = "de" if language.lower().startswith("de") else "en"
-    unset = "–"
-    days = [d for d in WEEKDAYS if d in (defaults.get("weekdays") or [])]
-    start, end = defaults.get("time_from"), defaults.get("time_to")
-    return {
-        "default_folder": str(defaults.get("folder") or unset),
-        "default_pattern": str(defaults.get("pattern") or unset),
-        "default_after": f"{defaults['after_seconds']} s" if "after_seconds" in defaults else unset,
-        "default_max": f"{defaults['max_minutes']} min" if "max_minutes" in defaults else unset,
-        "default_window": f"{start[:5]}–{end[:5]}" if start and end else unset,
-        "default_weekdays": ", ".join(_WEEKDAY_NAMES[lang][WEEKDAYS.index(d)] for d in days) or unset,
-        "default_sun": _SUN_NAMES[lang].get(defaults["sun"], unset) if "sun" in defaults else unset,
-    }
+def describe_overrides(fields: Iterable[str], language: str) -> str:
+    """Namen der Einstellungen, die auf der Geräteseite überschrieben sind („–“ = keine)."""
+    names = _FIELD_NAMES["de" if language.lower().startswith("de") else "en"]
+    return ", ".join(dict.fromkeys(names[f] for f in fields if f in names)) or "–"

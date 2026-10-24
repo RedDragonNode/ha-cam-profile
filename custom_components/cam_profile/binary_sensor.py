@@ -9,7 +9,7 @@ from homeassistant.helpers.device import async_entity_id_to_device
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import CamProfileConfigEntry
-from .entity import CamProfileEntity, cam_device, hub_device, profile_device
+from .entity import CamProfileEntity, ProfileEntity, cam_device, hub_device
 from .manager import ProfileCfg, ProfileManager
 
 
@@ -78,28 +78,25 @@ class CamRecordingSensor(CamProfileEntity, BinarySensorEntity):
         }
 
 
-class ProfileRecordingSensor(CamProfileEntity, BinarySensorEntity):
+class ProfileRecordingSensor(ProfileEntity, BinarySensorEntity):
     _attr_translation_key = "profile_recording"
     _attr_device_class = BinarySensorDeviceClass.RUNNING
 
     def __init__(self, m: ProfileManager, profile: ProfileCfg) -> None:
-        super().__init__(m)
-        self.profile = profile
-        self._attr_unique_id = f"{m.entry.entry_id}_{profile.subentry_id}_recording"
-        self._attr_device_info = profile_device(m, profile)
+        super().__init__(m, profile, "recording")
 
     @property
     def is_on(self) -> bool:
-        return self.manager.profile_running(self.profile.subentry_id)
+        return self.manager.profile_running(self.sid)
 
     @property
     def extra_state_attributes(self) -> dict:
-        run = self.manager.profile_state.get(self.profile.subentry_id) or {}
+        run = self.manager.profile_state.get(self.sid) or {}
         return {
             "folder": "/".join(self.profile.folder),
             "since": run.get("start"),
             "manual": run.get("manual"),
             "cams": run.get("cams") or self.profile.cams,
             "weekdays": self.profile.weekdays,
-            "inherited": self.profile.inherited,
+            "overridden": self.profile.overridden,
         }

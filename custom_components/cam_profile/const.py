@@ -31,11 +31,9 @@ DEFAULT_PATTERN = "{cam} %CCYY-%MM-%DD %hh-%mm-%ss"
 
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
-# Felder, die als Grundeinstellung (config_entry.options) gelten und im Profil überschrieben werden können.
-# Fehlt ein Feld im Profil, gilt die Grundeinstellung, fehlt auch die, gilt der eingebaute Wert.
-DEFAULTABLE = (
-    CONF_FOLDER,
-    CONF_PATTERN,
+# Felder, die auf der Geräteseite des Profils überschrieben werden können. Die Anlege-Werte im Profil bleiben dabei
+# unverändert, die Überschreibungen liegen getrennt im Speicher der Integration.
+OVERRIDABLE = (
     CONF_AFTER,
     CONF_MAX_MINUTES,
     CONF_TIME_FROM,
@@ -44,8 +42,13 @@ DEFAULTABLE = (
     CONF_SUN,
 )
 
-# Version 1.2: Profile speichern nur noch, was sie selbst überschreiben
-MINOR_VERSION = 2
+# Felder, die Version 0.3 als globale Grundeinstellung in config_entry.options kannte (nur für die Migration)
+LEGACY_DEFAULTS = (CONF_FOLDER, CONF_PATTERN, *OVERRIDABLE)
+
+# Version 1.3: keine globalen Grundeinstellungen mehr, Profile speichern wieder ihre Anlege-Werte selbst
+MINOR_VERSION = 3
+
+STORAGE_VERSION = 1
 
 SERVICE_START = "start_profile"
 SERVICE_STOP = "stop_profile"

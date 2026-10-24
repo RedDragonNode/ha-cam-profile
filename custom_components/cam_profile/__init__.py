@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
-
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -17,22 +14,24 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     ATTR_PROFILE,
-    CONF_AFTER,
-    CONF_MAX_MINUTES,
-    CONF_PATTERN,
-    CONF_SUN,
-    CONF_TIME_FROM,
-    CONF_TIME_TO,
-    DEFAULT_PATTERN,
     DOMAIN,
+    LEGACY_DEFAULTS,
     MINOR_VERSION,
     SERVICE_START,
     SERVICE_STOP,
     SUBENTRY_PROFILE,
 )
-from .manager import ProfileManager
+from .manager import ProfileManager, overrides_store
 
-PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.SWITCH,
+    Platform.NUMBER,
+    Platform.TIME,
+    Platform.SELECT,
+    Platform.BUTTON,
+]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 type CamProfileConfigEntry = ConfigEntry[ProfileManager]
@@ -57,30 +56,24 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-def _without_old_defaults(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Version 0.2 speicherte jedes Feld im Profil. Werte, die nur der alte Standard waren, werden wieder „geerbt“."""
-    cleaned = dict(data)
-    for key, old_default in ((CONF_AFTER, 0), (CONF_MAX_MINUTES, 0), (CONF_SUN, ""), (CONF_PATTERN, DEFAULT_PATTERN)):
-        if cleaned.get(key) == old_default:
-            del cleaned[key]
-    if not cleaned.get(CONF_TIME_FROM) and not cleaned.get(CONF_TIME_TO):
-        cleaned.pop(CONF_TIME_FROM, None)
-        cleaned.pop(CONF_TIME_TO, None)
-    return cleaned
-
-
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """1.1 -> 1.2: Profile speichern nur noch, was sie selbst überschreiben, damit Grundeinstellungen greifen."""
+    """1.x -> 1.3: Die globalen Grundeinstellungen aus Version 0.3 fallen weg.
+
+    Was ein Profil von dort geerbt hat, wird in das Profil geschrieben, damit sich nichts ändert.
+    """
     if entry.version == 1 and entry.minor_version < MINOR_VERSION:
-        for sub in list(entry.subentries.values()):
-            if sub.subentry_type == SUBENTRY_PROFILE and (data := _without_old_defaults(sub.data)) != dict(sub.data):
-                hass.config_entries.async_update_subentry(entry, sub, data=data)
-        hass.config_entries.async_update_entry(entry, minor_version=MINOR_VERSION)
+        defaults = {key: value for key, value in entry.options.items() if key in LEGACY_DEFAULTS}
+        if defaults:
+            for sub in list(entry.subentries.values()):
+                if sub.subentry_type == SUBENTRY_PROFILE:
+                    hass.config_entries.async_update_subentry(entry, sub, data={**defaults, **sub.data})
+        hass.config_entries.async_update_entry(entry, options={}, minor_version=MINOR_VERSION)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: CamProfileConfigEntry) -> bool:
     manager = ProfileManager(hass, entry)
+    await manager.async_load()
     entry.runtime_data = manager
     manager.hub_device_id = (
         dr.async_get(hass)
@@ -102,13 +95,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: CamProfileConfigEntry) -
 
 
 def _remove_unused_entities(hass: HomeAssistant, entry: ConfigEntry, manager: ProfileManager) -> None:
-    """Kameras ohne Profil verlieren ihren Aufnahme-Sensor, Profile mit Auslöser oder Zeitfenster ihren Schalter."""
+    """Kameras ohne Profil verlieren ihren Aufnahme-Sensor, Profile mit Auslöser oder Einschränkung ihren Schalter."""
     registry = er.async_get(hass)
     cams = {f"{entry.entry_id}_cam_{eid}_recording" for eid in manager.cam_ids}
     switches = {f"{entry.entry_id}_{sid}_manual" for sid, p in manager.profiles.items() if p.manual_only}
     for ent in er.async_entries_for_config_entry(registry, entry.entry_id):
         stale_cam = ent.unique_id.startswith(f"{entry.entry_id}_cam_") and ent.unique_id not in cams
-        stale_switch = ent.domain == Platform.SWITCH and ent.unique_id not in switches
+        stale_switch = (
+            ent.domain == Platform.SWITCH and ent.unique_id.endswith("_manual") and ent.unique_id not in switches
+        )
         if stale_cam or stale_switch:
             registry.async_remove(ent.entity_id)
 
@@ -122,3 +117,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: CamProfileConfigEntry) 
     if unloaded := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         await entry.runtime_data.async_stop()
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Beim Löschen der Integration auch die gespeicherten Überschreibungen entfernen."""
+    await overrides_store(hass, entry.entry_id).async_remove()

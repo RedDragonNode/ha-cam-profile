@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -19,6 +20,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import logic
@@ -36,9 +38,10 @@ from .const import (
     CONF_TRIGGERS,
     CONF_WEEKDAYS,
     DEFAULT_PATTERN,
-    DEFAULTABLE,
     DOMAIN,
+    OVERRIDABLE,
     POLL_SECONDS,
+    STORAGE_VERSION,
     SUBENTRY_PROFILE,
     SUN_ANY,
     SUN_DAY,
@@ -56,7 +59,7 @@ STATUS_ERROR = "error"
 
 @dataclass
 class ProfileCfg:
-    """Aufnahme-Profil mit den geltenden Werten (eigene, sonst Grundeinstellung, sonst eingebaute)."""
+    """Aufnahme-Profil mit den geltenden Werten: Überschreibung von der Geräteseite, sonst Anlege-Wert."""
 
     subentry_id: str
     name: str
@@ -70,7 +73,7 @@ class ProfileCfg:
     time_to: str = ""
     weekdays: list[str] = field(default_factory=list)  # leer = jeden Tag
     sun: str = SUN_ANY
-    inherited: list[str] = field(default_factory=list)  # Felder, die von den Grundeinstellungen kommen
+    overridden: list[str] = field(default_factory=list)  # Felder, die auf der Geräteseite überschrieben sind
 
     @property
     def has_time_window(self) -> bool:
@@ -91,6 +94,11 @@ class ProfileCfg:
         return not self.triggers and not self.has_window
 
 
+def overrides_store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
+    """Speicher für die Überschreibungen von der Geräteseite, getrennt von den Profilen."""
+    return Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}")
+
+
 class ProfileManager:
     """Hält die Profile eines Config-Entries und steuert ihre Aufnahmen."""
 
@@ -104,36 +112,80 @@ class ProfileManager:
         self.message: str | None = None
         self.message_time: str | None = None
         self.failed = False
-        self.profiles: dict[str, ProfileCfg] = {}
+        self.profiles: dict[str, ProfileCfg] = {}  # geltende Werte (mit Überschreibungen)
+        self.base: dict[str, ProfileCfg] = {}  # Anlege-Werte, wie im Profil gespeichert
+        self.overrides: dict[str, dict[str, Any]] = {}  # je Profil: Feld -> Wert von der Geräteseite
+        self._store = overrides_store(hass, entry.entry_id)
         self.profile_state: dict[str, dict[str, Any]] = {}  # laufende Profile (Laufzeit)
         self.hub_device_id: str | None = None  # Gerät „Cam Profile“, an dem die Profil-Geräte hängen
         self._prof_lock = asyncio.Lock()
         self._capped: set[str] = set()
         self._reauth_started = False
-        self._read_subentries()
 
     # ------------------------------------------------------------------ Setup
+    async def async_load(self) -> None:
+        """Gespeicherte Überschreibungen laden (Profile, die es nicht mehr gibt, fallen weg) und Profile aufbauen."""
+        stored = (await self._store.async_load() or {}).get("overrides") or {}
+        self.overrides = {
+            sid: {k: v for k, v in values.items() if k in OVERRIDABLE}
+            for sid, values in stored.items()
+            if sid in self.entry.subentries and values
+        }
+        self._read_subentries()
+
     def _read_subentries(self) -> None:
+        self.profiles, self.base = {}, {}
         for sid, sub in self.entry.subentries.items():
-            if sub.subentry_type != SUBENTRY_PROFILE:
-                continue
-            d = sub.data
-            values, inherited = logic.resolve(d, self.entry.options, DEFAULTABLE)
-            self.profiles[sid] = ProfileCfg(
-                subentry_id=sid,
-                name=d[CONF_NAME],
-                folder=logic.split_path(values.get(CONF_FOLDER, "")),
-                cams=list(d.get(CONF_CAMS) or []),
-                pattern=values.get(CONF_PATTERN) or DEFAULT_PATTERN,
-                triggers=list(d.get(CONF_TRIGGERS) or []),
-                after_s=int(values.get(CONF_AFTER) or 0),
-                max_min=int(values.get(CONF_MAX_MINUTES) or 0),
-                time_from=values.get(CONF_TIME_FROM) or "",
-                time_to=values.get(CONF_TIME_TO) or "",
-                weekdays=[day for day in WEEKDAYS if day in (values.get(CONF_WEEKDAYS) or [])],
-                sun=values.get(CONF_SUN) or SUN_ANY,
-                inherited=inherited,
-            )
+            if sub.subentry_type == SUBENTRY_PROFILE:
+                self.base[sid] = self._build(sid, {})
+                self.profiles[sid] = self._build(sid, self.overrides.get(sid, {}))
+
+    def _build(self, sid: str, overrides: Mapping[str, Any]) -> ProfileCfg:
+        """Profil aus den Anlege-Werten, darüber die Überschreibungen von der Geräteseite."""
+        d = self.entry.subentries[sid].data
+        values = {**d, **overrides}
+        return ProfileCfg(
+            subentry_id=sid,
+            name=d[CONF_NAME],
+            folder=logic.split_path(values.get(CONF_FOLDER, "")),
+            cams=list(d.get(CONF_CAMS) or []),
+            pattern=values.get(CONF_PATTERN) or DEFAULT_PATTERN,
+            triggers=list(d.get(CONF_TRIGGERS) or []),
+            after_s=int(values.get(CONF_AFTER) or 0),
+            max_min=int(values.get(CONF_MAX_MINUTES) or 0),
+            time_from=values.get(CONF_TIME_FROM) or "",
+            time_to=values.get(CONF_TIME_TO) or "",
+            weekdays=[day for day in WEEKDAYS if day in (values.get(CONF_WEEKDAYS) or [])],
+            sun=values.get(CONF_SUN) or SUN_ANY,
+            overridden=[key for key in OVERRIDABLE if key in overrides],
+        )
+
+    # -------------------------------------------------------------- Überschreiben
+    async def async_override(self, sid: str, values: Mapping[str, Any]) -> None:
+        """Einstellungen von der Geräteseite übernehmen. Die Anlege-Werte im Profil bleiben unverändert."""
+        before = self.profiles[sid].manual_only
+        self.overrides.setdefault(sid, {}).update({k: v for k, v in values.items() if k in OVERRIDABLE})
+        await self._save_overrides()
+        self._apply_overrides(sid, before)
+
+    async def async_reset_overrides(self, sid: str) -> None:
+        """Alle Überschreibungen eines Profils verwerfen, es gelten wieder die Anlege-Werte."""
+        before = self.profiles[sid].manual_only
+        self.overrides.pop(sid, None)
+        await self._save_overrides()
+        self._apply_overrides(sid, before)
+
+    async def _save_overrides(self) -> None:
+        await self._store.async_save({"overrides": self.overrides})
+
+    def _apply_overrides(self, sid: str, was_manual_only: bool) -> None:
+        self.profiles[sid] = self._build(sid, self.overrides.get(sid, {}))
+        self.notify()
+        if self.profiles[sid].manual_only != was_manual_only:
+            # Der Schalter „Von Hand aufnehmen“ gehört nur zu Profilen ohne Auslöser und ohne Einschränkung
+            self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
+        else:
+            self.hass.async_create_task(self._profile_tick(None))
 
     @property
     def cam_ids(self) -> list[str]:

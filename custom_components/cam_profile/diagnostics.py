@@ -26,6 +26,8 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: CamProf
         },
         "status": m.status,
         "message": m.message,
-        "profiles": [asdict(p) for p in m.profiles.values()],
+        "profiles": [asdict(p) for p in m.profiles.values()],  # geltende Werte (mit Überschreibungen)
+        "creation_values": [asdict(p) for p in m.base.values()],  # Anlege-Werte, wie im Profil gespeichert
+        "overrides": m.overrides,
         "running": {pid: {k: v for k, v in st.items() if k != "off_since"} for pid, st in m.profile_state.items()},
     }

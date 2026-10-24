@@ -84,33 +84,8 @@ def test_effective_weekday(when: datetime, start: str | None, end: str | None, e
     assert logic.effective_weekday(when, start, end) == expected
 
 
-def test_resolve_prefers_profile_and_counts_zero_as_value() -> None:
-    values, inherited = logic.resolve(
-        {"after_seconds": 0, "sun": ""},
-        {"after_seconds": 30, "sun": "night", "folder": "Basis"},
-        ("after_seconds", "sun", "folder", "pattern"),
-    )
-    assert values == {"after_seconds": 0, "sun": "", "folder": "Basis"}
-    assert inherited == ["folder"]
-
-
-def test_describe_defaults_in_both_languages() -> None:
-    defaults = {
-        "folder": "Basis",
-        "after_seconds": 0,
-        "time_from": "22:00:00",
-        "time_to": "06:00:00",
-        "weekdays": ["fri", "mon"],
-        "sun": "night",
-    }
-    de = logic.describe_defaults(defaults, "de")
-    assert (de["default_window"], de["default_weekdays"], de["default_sun"]) == ("22:00–06:00", "Mo, Fr", "Nacht")
-    assert (de["default_folder"], de["default_after"], de["default_pattern"], de["default_max"]) == (
-        "Basis",
-        "0 s",
-        "–",
-        "–",
-    )
-    en = logic.describe_defaults(defaults, "en-GB")
-    assert (en["default_weekdays"], en["default_sun"]) == ("Mon, Fri", "night")
-    assert logic.describe_defaults({}, "de")["default_weekdays"] == "–"
+def test_describe_overrides_in_both_languages() -> None:
+    fields = ["time_from", "time_to", "weekdays", "after_seconds"]
+    assert logic.describe_overrides(fields, "de") == "Zeitfenster, Wochentage, Nachlauf"
+    assert logic.describe_overrides(fields, "en-GB") == "time window, weekdays, run-on"
+    assert logic.describe_overrides([], "de") == "–"

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from homeassistant.config_entries import ConfigSubentryData
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.cam_profile.const import DOMAIN, MINOR_VERSION
@@ -105,13 +106,14 @@ def make_profile(name: str, cams: list[str], **overrides: Any) -> dict[str, Any]
         "max_minutes": 0,
         "time_from": "",
         "time_to": "",
+        "weekdays": [],
         "sun": "",
         **overrides,
     }
 
 
 def bare_profile(name: str, cams: list[str], **fields: Any) -> dict[str, Any]:
-    """Subentry-Daten, wie sie ab Version 0.3 gespeichert werden: nur Pflichtfelder und was das Profil selbst setzt."""
+    """Subentry-Daten mit nur den Pflichtfeldern: alles andere fehlt und fällt auf die eingebauten Werte zurück."""
     return {"name": name, "cams": cams, "triggers": [], **fields}
 
 
@@ -121,10 +123,15 @@ def add_cameras(hass: HomeAssistant, *names: str) -> None:
         hass.states.async_set(f"camera.{name}", "idle", {"friendly_name": name.title()})
 
 
-async def setup_entry(
-    hass: HomeAssistant, profiles: list[dict[str, Any]] | None = None, options: dict[str, Any] | None = None
-) -> MockConfigEntry:
-    """Richtet Cam Profile mit den angegebenen Profilen und Grundeinstellungen ein (Subentry-ID = 'p_<Name>')."""
+def profile_entity(hass: HomeAssistant, entry: MockConfigEntry, sid: str, domain: str, key: str) -> str:
+    """Entity-ID einer Entity am Profil-Gerät, gefunden über ihre eindeutige ID."""
+    entity_id = er.async_get(hass).async_get_entity_id(domain, DOMAIN, f"{entry.entry_id}_{sid}_{key}")
+    assert entity_id, f"{domain} {key} fehlt"
+    return entity_id
+
+
+async def setup_entry(hass: HomeAssistant, profiles: list[dict[str, Any]] | None = None) -> MockConfigEntry:
+    """Richtet Cam Profile mit den angegebenen Profilen ein (Subentry-ID = 'p_<Name>')."""
     subentries = [
         ConfigSubentryData(
             subentry_type="profile",
@@ -139,7 +146,6 @@ async def setup_entry(
         domain=DOMAIN,
         title="Cam Profile",
         data={"recorder_url": URL, "recorder_key": KEY},
-        options=options or {},
         subentries_data=subentries,
         minor_version=MINOR_VERSION,
     )
