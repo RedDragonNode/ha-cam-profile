@@ -54,7 +54,7 @@ Regeln:
 - **Nur Zeitfenster oder Sonne, kein Auslöser:** nimmt im Fenster durchgehend auf (z. B. „bei Nacht“).
 - **Auslöser (und Fenster):** nimmt auf, solange ein Auslöser „an“ ist und das Fenster offen ist.
 - **Nichts angegeben:** nur von Hand über die Dienste unten.
-- **Eine Kamera nimmt nie in zwei Profilen gleichzeitig auf.** Wer zuerst kommt, behält sie, das andere Profil nimmt ohne sie auf und meldet sie als „busy“. Das gilt auch für Aufnahmen, die nicht von dieser Integration kommen.
+- **Eine Kamera nimmt nie in zwei Profilen gleichzeitig auf.** Wer zuerst kommt, behält sie, das andere Profil nimmt ohne sie auf und meldet sie als „busy“. Der Recorder erkennt eine Kamera an ihrer ID, bei Cam Profile ist das die Entity-ID (`camera.…`). Spricht eine andere Integration denselben Recorder mit eigenen Kamera-IDs an (zum Beispiel Cam Recorder Profile), erkennt er dieselbe Kamera dort nicht wieder und würde sie doppelt aufnehmen.
 - Von Hand gestartete Profile laufen bis zum Stopp. Nach einem Neustart von Home Assistant werden laufende Profile wieder erkannt.
 - Wird eine Kamera-Entity umbenannt, ziehen die Profile automatisch mit.
 
