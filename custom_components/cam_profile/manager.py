@@ -32,10 +32,10 @@ from .const import (
     CONF_PATTERN,
     CONF_RECORDER_KEY,
     CONF_RECORDER_URL,
-    CONF_SCHEDULE,
     CONF_SUN,
     CONF_TIME_FROM,
     CONF_TIME_TO,
+    CONF_TIMES,
     CONF_TRIGGERS,
     CONF_WEEKDAYS,
     DEFAULT_PATTERN,
@@ -74,7 +74,7 @@ class ProfileCfg:
     time_to: str = ""
     weekdays: list[str] = field(default_factory=lambda: list(WEEKDAYS))  # Tage mit Aufnahme, leer = keiner
     sun: str = SUN_ANY
-    schedule: str = ""  # Entity eines HA-Zeitplans, aufgenommen wird nur, solange er an ist
+    times: dict[str, list[str]] = field(default_factory=dict)  # je Tag Zeiten 'HH:MM-HH:MM', leer = ganztägig
     overridden: list[str] = field(default_factory=list)  # Felder, die auf der Geräteseite überschrieben sind
 
     @property
@@ -82,13 +82,18 @@ class ProfileCfg:
         return logic.has_time_window(self.time_from, self.time_to)
 
     @property
+    def has_day_times(self) -> bool:
+        """Hat ein aktiver Tag eigene Zeiten?"""
+        return any(self.times.get(day) for day in self.weekdays)
+
+    @property
     def weekday_limited(self) -> bool:
         return len(set(self.weekdays)) < len(WEEKDAYS)
 
     @property
     def has_window(self) -> bool:
-        """Zeitplan, Zeitfenster, Sonne oder Wochentage schränken ein: dann läuft das Profil auch ohne Auslöser."""
-        return self.has_time_window or bool(self.sun) or bool(self.schedule) or self.weekday_limited
+        """Zeiten, Sonne oder Wochentage schränken ein: dann läuft das Profil auch ohne Auslöser."""
+        return self.has_time_window or bool(self.sun) or self.weekday_limited or self.has_day_times
 
     @property
     def manual_only(self) -> bool:
@@ -162,7 +167,7 @@ class ProfileManager:
             time_to=values.get(CONF_TIME_TO) or "",
             weekdays=[day for day in WEEKDAYS if day in days],
             sun=values.get(CONF_SUN) or SUN_ANY,
-            schedule=d.get(CONF_SCHEDULE) or "",
+            times={day: list((values.get(CONF_TIMES) or {}).get(day) or []) for day in WEEKDAYS},
             overridden=[key for key in OVERRIDABLE if key in overrides],
         )
 
@@ -207,7 +212,6 @@ class ProfileManager:
         watch = {e for p in self.profiles.values() for e in p.triggers}
         if any(p.sun for p in self.profiles.values()):
             watch.add("sun.sun")
-        watch |= {p.schedule for p in self.profiles.values() if p.schedule}
         if watch:
             self._unsubs.append(async_track_state_change_event(self.hass, sorted(watch), self._profile_state_changed))
         if self.profiles:
@@ -336,12 +340,8 @@ class ProfileManager:
         return any((st := self.hass.states.get(e)) is not None and st.state == STATE_ON for e in p.triggers)
 
     def _window_open(self, p: ProfileCfg, now: datetime) -> bool:
-        if p.weekday_limited and WEEKDAYS[logic.effective_weekday(now, p.time_from, p.time_to)] not in p.weekdays:
+        if not logic.times_open(now, p.weekdays, p.times, p.time_from, p.time_to):
             return False
-        if p.has_time_window and not logic.in_time_window(now, p.time_from, p.time_to):
-            return False
-        if p.schedule and ((plan := self.hass.states.get(p.schedule)) is None or plan.state != STATE_ON):
-            return False  # der Zeitplan ist aus oder fehlt
         if p.sun:
             sun = self.hass.states.get("sun.sun")
             if sun is None or sun.state not in ("above_horizon", "below_horizon"):

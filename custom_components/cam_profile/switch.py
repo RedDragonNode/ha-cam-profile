@@ -62,6 +62,11 @@ class ProfileWeekdaySwitch(ProfileSettingEntity, SwitchEntity):
     def is_on(self) -> bool:
         return self._value_of(self.profile)
 
+    @property
+    def is_overridden(self) -> bool:
+        # die Tage werden zusammen gespeichert, überschrieben ist nur der Tag, der vom Anlege-Wert abweicht
+        return CONF_WEEKDAYS in self.profile.overridden and self.is_on != self._value_of(self.manager.base[self.sid])
+
     async def _set_day(self, on: bool) -> None:
         days = set(self.profile.weekdays)
         days = days | {self.day} if on else days - {self.day}

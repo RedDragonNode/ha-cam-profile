@@ -98,6 +98,6 @@ class ProfileRecordingSensor(ProfileEntity, BinarySensorEntity):
             "manual": run.get("manual"),
             "cams": run.get("cams") or self.profile.cams,
             "weekdays": self.profile.weekdays,
-            "schedule": self.profile.schedule or None,
+            "times": {day: windows for day, windows in self.profile.times.items() if windows},
             "overridden": self.profile.overridden,
         }

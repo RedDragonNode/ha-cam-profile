@@ -25,7 +25,7 @@ async def test_entities_for_hub_profiles_and_cameras(hass: HomeAssistant) -> Non
         hass, [make_profile("Eins", ["camera.a"]), make_profile("Zwei", ["camera.a", "camera.b"])]
     )
     eid = entry.entry_id
-    # Einstellungen auf der Geräteseite: Zahlen, Uhrzeiten, Sonne, sieben Wochentage und der Knopf zum Zurücksetzen
+    # Einstellungen auf der Geräteseite: Zahlen, Uhrzeiten, Sonne, je Wochentag Schalter und Zeiten, Reset-Knopf
     settings = {
         f"{eid}_{sid}_{key}"
         for sid in ("p_Eins", "p_Zwei")
@@ -37,6 +37,7 @@ async def test_entities_for_hub_profiles_and_cameras(hass: HomeAssistant) -> Non
             "sun",
             "reset",
             *(f"weekday_{day}" for day in WEEKDAYS),
+            *(f"times_{day}" for day in WEEKDAYS),
         )
     }
     assert _unique_ids(hass, entry) == settings | {

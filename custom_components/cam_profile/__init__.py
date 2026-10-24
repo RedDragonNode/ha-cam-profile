@@ -31,10 +31,12 @@ PLATFORMS = [
     Platform.SWITCH,
     Platform.NUMBER,
     Platform.TIME,
+    Platform.TEXT,
     Platform.SELECT,
     Platform.BUTTON,
 ]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+_OLD_SCHEDULE = "schedule"  # Profilfeld aus Version 0.5, wird bei der Migration entfernt
 
 type CamProfileConfigEntry = ConfigEntry[ProfileManager]
 
@@ -59,11 +61,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """1.x -> 1.4, ohne dass sich das Verhalten der Profile ändert.
+    """1.x -> 1.5, ohne dass sich das Verhalten der Profile ändert.
 
     1.3: Die globalen Grundeinstellungen aus Version 0.3 fallen weg, was ein Profil von dort geerbt hat,
     wird in das Profil geschrieben. 1.4: Leere Wochentage hießen jeden Tag und heißen jetzt an keinem Tag,
-    deshalb speichern Profile alle sieben Tage ausdrücklich.
+    deshalb speichern Profile alle sieben Tage ausdrücklich. 1.5: Das Zeitplan-Feld aus 0.5 entfällt.
     """
     if entry.version == 1 and entry.minor_version < MINOR_VERSION:
         defaults = (
@@ -75,8 +77,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if sub.subentry_type != SUBENTRY_PROFILE:
                 continue
             data = {**defaults, **sub.data}
-            if not data.get(CONF_WEEKDAYS):
-                data[CONF_WEEKDAYS] = list(WEEKDAYS)
+            had_schedule = bool(data.pop(_OLD_SCHEDULE, None))
+            if (entry.minor_version < 4 or had_schedule) and not data.get(CONF_WEEKDAYS):
+                data[CONF_WEEKDAYS] = list(WEEKDAYS)  # mit Zeitplan waren die Wochentage oft aus, weil er sie ersetzte
             if data != dict(sub.data):
                 hass.config_entries.async_update_subentry(entry, sub, data=data)
         hass.config_entries.async_update_entry(entry, options={}, minor_version=MINOR_VERSION)

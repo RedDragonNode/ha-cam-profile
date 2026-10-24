@@ -61,10 +61,14 @@ class ProfileSettingEntity(ProfileEntity):
         raise NotImplementedError
 
     @property
+    def is_overridden(self) -> bool:
+        return any(field in self.profile.overridden for field in self.fields)
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         creation = self._value_of(self.manager.base[self.sid])
         return {
-            "overridden": any(field in self.profile.overridden for field in self.fields),
+            "overridden": self.is_overridden,
             "creation_value": creation.isoformat() if isinstance(creation, time) else creation,
         }
 

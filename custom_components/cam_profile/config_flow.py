@@ -27,10 +27,10 @@ from .const import (
     CONF_PATTERN,
     CONF_RECORDER_KEY,
     CONF_RECORDER_URL,
-    CONF_SCHEDULE,
     CONF_SUN,
     CONF_TIME_FROM,
     CONF_TIME_TO,
+    CONF_TIMES,
     CONF_TRIGGERS,
     CONF_WEEKDAYS,
     DEFAULT_PATTERN,
@@ -46,6 +46,7 @@ from .recorder_client import RecorderAuthError, RecorderClient, RecorderError
 
 _TEXT = selector.TextSelector()
 _DAY = "weekday_"  # Feldname der Schalter im Formular: weekday_mon bis weekday_sun
+_TIMES = "times_"  # Feldname der Zeiten je Tag: times_mon bis times_sun
 _SECRET = selector.TextSelector(selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD))
 
 # Auswahl in der Oberfläche -> gespeicherter Wert ("egal" wird als leerer Text gespeichert und überschreibt dann auch)
@@ -98,7 +99,7 @@ def _how_data(user_input: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _when_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    """Nachlauf, Höchstdauer, Zeitfenster, Wochentage (ein Schalter je Tag), Sonne, Zeitplan und Fehler."""
+    """Nachlauf, Höchstdauer, Von/Bis für alle Tage und Sonne sowie die Fehler dazu."""
     errors: dict[str, str] = {}
     start, end = user_input.get(CONF_TIME_FROM) or "", user_input.get(CONF_TIME_TO) or ""
     if bool(start) != bool(end):
@@ -108,28 +109,43 @@ def _when_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str,
         CONF_MAX_MINUTES: int(user_input.get(CONF_MAX_MINUTES) or 0),
         CONF_TIME_FROM: start if start and end else "",
         CONF_TIME_TO: end if start and end else "",
-        CONF_WEEKDAYS: [day for day in WEEKDAYS if user_input.get(f"{_DAY}{day}", True)],
         CONF_SUN: _SUN_OPTIONS.get(user_input.get(CONF_SUN) or "any", ""),
-        CONF_SCHEDULE: user_input.get(CONF_SCHEDULE) or "",
     }
     return data, errors
 
 
+def _days_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    """Aktive Wochentage (ein Schalter je Tag) und ihre Zeiten, dazu Fehler für unlesbare Zeiten."""
+    errors: dict[str, str] = {}
+    times: dict[str, list[str]] = {}
+    for day in WEEKDAYS:
+        try:
+            if windows := logic.parse_times(user_input.get(f"{_TIMES}{day}")):
+                times[day] = windows
+        except ValueError:
+            errors[f"{_TIMES}{day}"] = "times_invalid"
+    days = [day for day in WEEKDAYS if user_input.get(f"{_DAY}{day}", True)]
+    return {CONF_WEEKDAYS: days, CONF_TIMES: times}, errors
+
+
 # Vorbelegung beim Anlegen (und für Felder, die ein älteres Profil nicht gespeichert hat)
-_NEW_PROFILE = {
-    CONF_PATTERN: DEFAULT_PATTERN,
-    CONF_AFTER: 0,
-    CONF_MAX_MINUTES: 0,
-    CONF_SUN: "",
-    CONF_WEEKDAYS: list(WEEKDAYS),
-}
+_NEW_PROFILE = {CONF_PATTERN: DEFAULT_PATTERN, CONF_AFTER: 0, CONF_MAX_MINUTES: 0, CONF_SUN: ""}
 
 
 def _suggestions(current: Mapping[str, Any]) -> dict[str, Any]:
     values = {**_NEW_PROFILE, **current}
     values[CONF_SUN] = _SUN_SUGGESTION.get(values[CONF_SUN], "any")
+    return values
+
+
+def _day_suggestions(current: Mapping[str, Any]) -> dict[str, Any]:
+    """Schalter und Zeiten je Tag. Fehlt das Feld im Profil, ist jeder Tag an."""
+    active = current.get(CONF_WEEKDAYS, list(WEEKDAYS))
+    times = current.get(CONF_TIMES) or {}
+    values: dict[str, Any] = {}
     for day in WEEKDAYS:
-        values[f"{_DAY}{day}"] = day in values[CONF_WEEKDAYS]
+        values[f"{_DAY}{day}"] = day in active
+        values[f"{_TIMES}{day}"] = logic.format_times(times.get(day) or [])
     return values
 
 
@@ -227,13 +243,14 @@ class CamProfileConfigFlow(ConfigFlow, domain=DOMAIN):
 
 # ----------------------------------------------------------------- Profile
 class ProfileSubentryFlow(ConfigSubentryFlow):
-    """Aufnahme-Profil anlegen oder bearbeiten: Schritt 1 wohin und welche Kameras, Schritt 2 wann.
+    """Aufnahme-Profil anlegen oder bearbeiten: wohin und welche Kameras, wann, an welchen Tagen und zu welchen Zeiten.
 
-    Was hier steht, sind die Anlege-Werte des Profils. Nachlauf, Höchstdauer, Zeitfenster, Wochentage und Sonne
-    lassen sich später auf der Geräteseite des Profils überschreiben, ohne dass sich diese Werte ändern.
+    Was hier steht, sind die Anlege-Werte des Profils. Nachlauf, Höchstdauer, Von/Bis, Wochentage und ihre Zeiten
+    und Sonne lassen sich später auf der Geräteseite des Profils überschreiben, ohne dass sich diese Werte ändern.
     """
 
     _basics: dict[str, Any]
+    _when: dict[str, Any]
     _own: str | None = None
 
     def _placeholders(self) -> dict[str, str]:
@@ -293,21 +310,8 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
         if user_input is not None:
             when, errors = _when_data(user_input)
             if not errors:
-                data = {
-                    **self._basics,
-                    CONF_TRIGGERS: list(user_input.get(CONF_TRIGGERS) or []),
-                    **when,
-                }
-                unique_id = logic.norm(data[CONF_NAME])
-                if self._own is None:
-                    return self.async_create_entry(title=data[CONF_NAME], data=data, unique_id=unique_id)
-                return self.async_update_and_abort(
-                    self._get_entry(),
-                    self._get_reconfigure_subentry(),
-                    title=data[CONF_NAME],
-                    unique_id=unique_id,
-                    data=data,
-                )
+                self._when = {CONF_TRIGGERS: list(user_input.get(CONF_TRIGGERS) or []), **when}
+                return await self._step_days(step_id.replace("_when", "_days"), None, current)
         schema = vol.Schema(
             {
                 vol.Optional(CONF_TRIGGERS): selector.EntitySelector(
@@ -319,14 +323,44 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
                 vol.Optional(CONF_MAX_MINUTES): _num(1440, "min"),
                 vol.Optional(CONF_TIME_FROM): selector.TimeSelector(),
                 vol.Optional(CONF_TIME_TO): selector.TimeSelector(),
-                **{vol.Optional(f"{_DAY}{day}", default=True): selector.BooleanSelector() for day in WEEKDAYS},
                 vol.Optional(CONF_SUN): _sun_select(),
-                vol.Optional(CONF_SCHEDULE): selector.EntitySelector(selector.EntitySelectorConfig(domain="schedule")),
             }
         )
         return self.async_show_form(
             step_id=step_id,
             data_schema=self.add_suggested_values_to_schema(schema, user_input or _suggestions(current)),
+            errors=errors,
+            description_placeholders=self._placeholders(),
+        )
+
+    # -------------------------------------------------------------- Schritt 3
+    async def _step_days(
+        self, step_id: str, user_input: dict[str, Any] | None, current: Mapping[str, Any]
+    ) -> SubentryFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            days, errors = _days_data(user_input)
+            if not errors:
+                data = {**self._basics, **self._when, **days}
+                unique_id = logic.norm(data[CONF_NAME])
+                if self._own is None:
+                    return self.async_create_entry(title=data[CONF_NAME], data=data, unique_id=unique_id)
+                return self.async_update_and_abort(
+                    self._get_entry(),
+                    self._get_reconfigure_subentry(),
+                    title=data[CONF_NAME],
+                    unique_id=unique_id,
+                    data=data,
+                )
+        fields: dict[Any, Any] = {}
+        for day in WEEKDAYS:
+            fields[vol.Optional(f"{_DAY}{day}", default=True)] = selector.BooleanSelector()
+            fields[vol.Optional(f"{_TIMES}{day}")] = _TEXT
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(fields), user_input or _day_suggestions(current)
+            ),
             errors=errors,
             description_placeholders=self._placeholders(),
         )
@@ -339,6 +373,9 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
     async def async_step_user_when(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         return await self._step_when("user_when", user_input, {})
 
+    async def async_step_user_days(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        return await self._step_days("user_days", user_input, {})
+
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         sub = self._get_reconfigure_subentry()
         self._own = sub.subentry_id
@@ -346,3 +383,6 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
 
     async def async_step_reconfigure_when(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
         return await self._step_when("reconfigure_when", user_input, dict(self._get_reconfigure_subentry().data))
+
+    async def async_step_reconfigure_days(self, user_input: dict[str, Any] | None = None) -> SubentryFlowResult:
+        return await self._step_days("reconfigure_days", user_input, dict(self._get_reconfigure_subentry().data))

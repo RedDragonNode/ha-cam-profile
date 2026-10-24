@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
-from datetime import datetime, timedelta
+from collections.abc import Iterable, Mapping
+from datetime import datetime
+
+from .const import WEEKDAYS
 
 _UMLAUTE = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "Ä": "ae", "Ö": "oe", "Ü": "ue"})
 
@@ -72,28 +74,90 @@ def has_time_window(start: str | None, end: str | None) -> bool:
     return bool(start and end and _hms(start) != _hms(end))
 
 
-def in_time_window(now: datetime, start: str | None, end: str | None) -> bool:
-    """Liegt now im Fenster start..end ('HH:MM[:SS]')? Fenster über Mitternacht sind erlaubt."""
-    if not has_time_window(start, end):
-        return True
-    cur = now.strftime("%H:%M:%S")
-    s, e = _hms(start or ""), _hms(end or "")
-    return s <= cur < e if s < e else (cur >= s or cur < e)
+_END_OF_DAY = "24:00:00"
+_RANGE = re.compile(
+    r"^\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(?:-|–|—|bis)\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$", re.IGNORECASE
+)
 
 
-def effective_weekday(now: datetime, start: str | None, end: str | None) -> int:
-    """Wochentag (Montag = 0), der für die Aufnahme zählt.
+def _clock(hour: str, minute: str, second: str | None, *, end: bool) -> str:
+    h, m, s = int(hour), int(minute), int(second or 0)
+    if m > 59 or s > 59 or h > 24 or (h == 24 and (m or s or not end)):
+        raise ValueError(f"{hour}:{minute}")
+    return f"{h:02d}:{m:02d}:{s:02d}"
 
-    Bei einem Fenster über Mitternacht zählt der Tag, an dem es begann: Freitag 22:00 bis 06:00 gehört
-    um 03:00 Uhr nachts noch zum Freitag.
+
+def _short(clock: str) -> str:
+    return clock[:5] if clock.endswith(":00") else clock
+
+
+def parse_times(text: str | None) -> list[str]:
+    """'08:00-12:00, 18:00-22:00' -> ['08:00-12:00', '18:00-22:00'] (Komma oder Semikolon, auch über Mitternacht).
+
+    Wirft ValueError mit dem unlesbaren Teil. 24:00 ist nur als Ende erlaubt.
     """
-    if (
-        has_time_window(start, end)
-        and _hms(start or "") > _hms(end or "")
-        and now.strftime("%H:%M:%S") < _hms(end or "")
-    ):
-        return (now - timedelta(days=1)).weekday()
-    return now.weekday()
+    windows: list[str] = []
+    for part in re.split(r"[;,]", text or ""):
+        if not part.strip():
+            continue
+        match = _RANGE.match(part)
+        if match is None:
+            raise ValueError(part.strip())
+        h1, m1, s1, h2, m2, s2 = match.groups()
+        start, end = _clock(h1, m1, s1, end=False), _clock(h2, m2, s2, end=True)
+        windows.append(f"{_short(start)}-{_short(end)}")
+    return windows
+
+
+def format_times(windows: Iterable[str]) -> str:
+    return ", ".join(windows)
+
+
+def split_range(window: str) -> tuple[str, str]:
+    """'08:00-12:00' -> ('08:00:00', '12:00:00')."""
+    start, end = window.split("-", 1)
+    return _hms(start), _hms(end)
+
+
+def _hits(cur: str, start: str, end: str, today: bool) -> bool:
+    if start == end:
+        return today  # gleiche Zeit heißt ganztägig
+    if start < end:
+        return today and start <= cur < end
+    return cur >= start if today else cur < end  # über Mitternacht: abends heute, morgens noch vom Vortag
+
+
+def _day_windows(
+    day: str, times: Mapping[str, list[str]], default_from: str | None, default_to: str | None
+) -> list[tuple[str, str]]:
+    if own := times.get(day):
+        return [split_range(window) for window in own]
+    if has_time_window(default_from, default_to):
+        return [(_hms(default_from or ""), _hms(default_to or ""))]
+    return [("00:00:00", _END_OF_DAY)]
+
+
+def times_open(
+    now: datetime,
+    days: Iterable[str],
+    times: Mapping[str, list[str]],
+    default_from: str | None,
+    default_to: str | None,
+) -> bool:
+    """Passt now zu den aktiven Tagen und ihren Zeiten?
+
+    Ein Tag ohne eigene Zeiten nimmt in der Von/Bis-Zeit auf, ohne die ganztägig. Ein Fenster über Mitternacht gehört
+    zu dem Tag, an dem es beginnt: Freitag 22:00 bis 06:00 gilt um 03:00 Uhr nachts noch für den Freitag.
+    """
+    active = set(days)
+    cur = now.strftime("%H:%M:%S")
+    for offset, today in ((0, True), (1, False)):
+        day = WEEKDAYS[(now.weekday() - offset) % 7]
+        if day in active and any(
+            _hits(cur, start, end, today) for start, end in _day_windows(day, times, default_from, default_to)
+        ):
+            return True
+    return False
 
 
 _FIELD_NAMES = {
@@ -103,6 +167,7 @@ _FIELD_NAMES = {
         "time_from": "Zeitfenster",
         "time_to": "Zeitfenster",
         "weekdays": "Wochentage",
+        "times": "Zeiten",
         "sun": "Sonne",
     },
     "en": {
@@ -111,6 +176,7 @@ _FIELD_NAMES = {
         "time_from": "time window",
         "time_to": "time window",
         "weekdays": "weekdays",
+        "times": "times",
         "sun": "sun",
     },
 }

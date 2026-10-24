@@ -54,22 +54,14 @@
         },
         "user_when": {
           "title": "When to record?",
-          "description": "These are the creation values of the profile. Without triggers and without a restriction (schedule, time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. A weekday that is switched off does not record, and with all of them off the profile never records on its own. For several times per weekday pick a schedule (the Schedule helper under Settings → Devices & services → Helpers): it only records while the schedule is on. You can override run-on, maximum length, time window, weekdays and sun later on the profile's device page without changing these values. From = until means all day.",
+          "description": "These are the creation values of the profile. Without triggers and without a restriction (weekdays, times, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. From/until applies to every day that has no times of its own (from = until means all day). You set the weekdays and their times in the next step. You can override run-on, maximum length, from/until, weekdays, times and sun later on the profile's device page without changing these values.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
             "after_seconds": "Run-on after \"off\" (seconds)",
             "max_minutes": "Maximum length per recording (minutes, 0 = unlimited)",
-            "time_from": "Only from (time)",
-            "time_to": "Only until (time)",
-            "weekday_mon": "Record on Monday",
-            "weekday_tue": "Record on Tuesday",
-            "weekday_wed": "Record on Wednesday",
-            "weekday_thu": "Record on Thursday",
-            "weekday_fri": "Record on Friday",
-            "weekday_sat": "Record on Saturday",
-            "weekday_sun": "Record on Sunday",
-            "sun": "Sun",
-            "schedule": "Schedule (optional, for several times per weekday)"
+            "time_from": "From (time, for days without times of their own)",
+            "time_to": "Until (time, for days without times of their own)",
+            "sun": "Sun"
           }
         },
         "reconfigure": {
@@ -84,22 +76,54 @@
         },
         "reconfigure_when": {
           "title": "When to record?",
-          "description": "These are the creation values of the profile. Without triggers and without a restriction (schedule, time window, weekdays, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. A weekday that is switched off does not record, and with all of them off the profile never records on its own. For several times per weekday pick a schedule (the Schedule helper). Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there. From = until means all day.",
+          "description": "These are the creation values of the profile. Without triggers and without a restriction (weekdays, times, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. From/until applies to every day that has no times of its own (from = until means all day). Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
             "after_seconds": "Run-on after \"off\" (seconds)",
             "max_minutes": "Maximum length per recording (minutes, 0 = unlimited)",
-            "time_from": "Only from (time)",
-            "time_to": "Only until (time)",
+            "time_from": "From (time, for days without times of their own)",
+            "time_to": "Until (time, for days without times of their own)",
+            "sun": "Sun"
+          }
+        },
+        "user_days": {
+          "title": "Which days and when?",
+          "description": "Switch on every day on which to record and optionally add the times, for example 08:00-12:00, 18:00-22:00 (several separated by commas, also across midnight like 22:00-06:00, a window across midnight belongs to the day it starts on). Without times the day records all day, or only within the from/until time of the last step. With all days off the profile never records on its own, by hand still works.",
+          "data": {
             "weekday_mon": "Record on Monday",
+            "times_mon": "Monday: times (empty = all day)",
             "weekday_tue": "Record on Tuesday",
+            "times_tue": "Tuesday: times (empty = all day)",
             "weekday_wed": "Record on Wednesday",
+            "times_wed": "Wednesday: times (empty = all day)",
             "weekday_thu": "Record on Thursday",
+            "times_thu": "Thursday: times (empty = all day)",
             "weekday_fri": "Record on Friday",
+            "times_fri": "Friday: times (empty = all day)",
             "weekday_sat": "Record on Saturday",
+            "times_sat": "Saturday: times (empty = all day)",
             "weekday_sun": "Record on Sunday",
-            "sun": "Sun",
-            "schedule": "Schedule (optional, for several times per weekday)"
+            "times_sun": "Sunday: times (empty = all day)"
+          }
+        },
+        "reconfigure_days": {
+          "title": "Which days and when?",
+          "description": "Switch on every day on which to record and optionally add the times, for example 08:00-12:00, 18:00-22:00 (several separated by commas, also across midnight like 22:00-06:00, a window across midnight belongs to the day it starts on). Without times the day records all day, or only within the from/until time. With all days off the profile never records on its own. Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there.",
+          "data": {
+            "weekday_mon": "Record on Monday",
+            "times_mon": "Monday: times (empty = all day)",
+            "weekday_tue": "Record on Tuesday",
+            "times_tue": "Tuesday: times (empty = all day)",
+            "weekday_wed": "Record on Wednesday",
+            "times_wed": "Wednesday: times (empty = all day)",
+            "weekday_thu": "Record on Thursday",
+            "times_thu": "Thursday: times (empty = all day)",
+            "weekday_fri": "Record on Friday",
+            "times_fri": "Friday: times (empty = all day)",
+            "weekday_sat": "Record on Saturday",
+            "times_sat": "Saturday: times (empty = all day)",
+            "weekday_sun": "Record on Sunday",
+            "times_sun": "Sunday: times (empty = all day)"
           }
         }
       },
@@ -107,7 +131,8 @@
         "name_taken": "This name already exists (or is empty).",
         "folder_required": "Please enter a target folder.",
         "cams_required": "Please choose at least one camera.",
-        "time_both": "Please set \"from\" and \"until\" together."
+        "time_both": "Please set \"from\" and \"until\" together.",
+        "times_invalid": "Please enter times like 08:00-12:00, 18:00-22:00: from-until, several separated by commas."
       },
       "abort": {
         "reconfigure_successful": "Saved."
@@ -138,25 +163,25 @@
         "name": "Record manually"
       },
       "profile_weekday_mon": {
-        "name": "1 Record on Monday"
+        "name": "1 Monday record"
       },
       "profile_weekday_tue": {
-        "name": "2 Record on Tuesday"
+        "name": "2 Tuesday record"
       },
       "profile_weekday_wed": {
-        "name": "3 Record on Wednesday"
+        "name": "3 Wednesday record"
       },
       "profile_weekday_thu": {
-        "name": "4 Record on Thursday"
+        "name": "4 Thursday record"
       },
       "profile_weekday_fri": {
-        "name": "5 Record on Friday"
+        "name": "5 Friday record"
       },
       "profile_weekday_sat": {
-        "name": "6 Record on Saturday"
+        "name": "6 Saturday record"
       },
       "profile_weekday_sun": {
-        "name": "7 Record on Sunday"
+        "name": "7 Sunday record"
       }
     },
     "binary_sensor": {
@@ -199,6 +224,29 @@
     "button": {
       "profile_reset": {
         "name": "Reset to creation values"
+      }
+    },
+    "text": {
+      "profile_times_mon": {
+        "name": "1 Monday times"
+      },
+      "profile_times_tue": {
+        "name": "2 Tuesday times"
+      },
+      "profile_times_wed": {
+        "name": "3 Wednesday times"
+      },
+      "profile_times_thu": {
+        "name": "4 Thursday times"
+      },
+      "profile_times_fri": {
+        "name": "5 Friday times"
+      },
+      "profile_times_sat": {
+        "name": "6 Saturday times"
+      },
+      "profile_times_sun": {
+        "name": "7 Sunday times"
       }
     }
   },
@@ -245,6 +293,9 @@
     },
     "recorder_not_configured": {
       "message": "The app address and key are missing. Please enter them under \"Change connection\"."
+    },
+    "invalid_times": {
+      "message": "I cannot read the times \"{value}\". Please enter them like this: 08:00-12:00, 18:00-22:00."
     }
   },
   "issues": {

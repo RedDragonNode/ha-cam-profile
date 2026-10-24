@@ -46,29 +46,26 @@ Der Name der Kamera ist der Name ihres Geräts, sonst der der Entity. Haben zwei
 | Auslöser | Bewegungsmelder, Schalter oder Sensor (mehrere möglich): irgendeiner „an“ = aufnehmen |
 | Nachlauf | Sekunden, die nach „aus“ weiter aufgenommen wird |
 | Höchstdauer | Minuten pro Aufnahme (0 = unbegrenzt). Danach geht es erst nach „aus → an“ weiter |
-| Von / bis | Zeitfenster, auch über Mitternacht. Von = bis bedeutet ganztägig |
-| Wochentage | sieben Schalter, Montag bis Sonntag, standardmäßig alle an. Ein ausgeschalteter Tag nimmt nicht auf, sind **alle aus**, nimmt das Profil an keinem Tag von allein auf. Bei einem Fenster über Mitternacht zählt der Tag, an dem es beginnt (Freitag 22:00 bis 06:00 gehört um 03:00 nachts noch zum Freitag) |
+| Von / bis | Zeitfenster für jeden Tag, der keine eigenen Zeiten hat, auch über Mitternacht. Von = bis bedeutet ganztägig |
 | Sonne | nur bei Tag oder nur bei Nacht (`sun.sun`) |
-| Zeitplan | optional: ein Zeitplan-Helfer von Home Assistant für **mehrere Zeiten je Wochentag**, siehe unten. Aufgenommen wird nur, solange er „an“ ist |
+
+**Schritt 3: An welchen Tagen und wann**
+
+| Feld | Bedeutung |
+|---|---|
+| Montag … Sonntag aufnehmen | ein Schalter je Wochentag, standardmäßig alle an. Ein ausgeschalteter Tag nimmt nicht auf, sind **alle aus**, nimmt das Profil an keinem Tag von allein auf |
+| Montag … Sonntag: Zeiten | optional, je Tag **mehrere Zeiten**, zum Beispiel `08:00-12:00, 18:00-22:00` (mehrere durch Komma). Leer heißt ganztägig oder in der Von/Bis-Zeit |
+
+Zeiten dürfen über Mitternacht gehen (`22:00-06:00`), das Fenster gehört dann zu dem Tag, an dem es beginnt (Freitag 22:00 bis 06:00 gilt um 03:00 nachts noch für den Freitag). `24:00` ist als Ende erlaubt. Eigene Zeiten eines Tages **ersetzen** dort die Von/Bis-Zeit, es gibt also keine Überschneidung zweier Regeln.
 
 Regeln:
 
-- **Nur Zeitplan, Zeitfenster, Wochentage oder Sonne, kein Auslöser:** nimmt in dieser Zeit durchgehend auf (z. B. „bei Nacht“ oder „samstags“).
-- **Auslöser (und Einschränkung):** nimmt auf, solange ein Auslöser „an“ ist und Zeitplan, Zeitfenster, Wochentag und Sonne passen. Alles zusammen muss passen.
-- **Nichts angegeben:** nur von Hand, über den Schalter **Von Hand aufnehmen** am Gerät des Profils oder über die Dienste unten. Wochentage, Zeitfenster und Sonne lassen sich später auf der Geräteseite überschreiben, siehe unten.
+- **Nur Wochentage, Zeiten oder Sonne, kein Auslöser:** nimmt in dieser Zeit durchgehend auf (z. B. „bei Nacht“ oder „samstags 08–10 Uhr“).
+- **Auslöser (und Einschränkung):** nimmt auf, solange ein Auslöser „an“ ist und Wochentag, Zeiten und Sonne passen. Alles zusammen muss passen.
+- **Nichts angegeben:** nur von Hand, über den Schalter **Von Hand aufnehmen** am Gerät des Profils oder über die Dienste unten. Wochentage, Zeiten und Sonne lassen sich später auf der Geräteseite überschreiben, siehe unten.
 - **Eine Kamera nimmt nie in zwei Profilen gleichzeitig auf.** Wer zuerst kommt, behält sie, das andere Profil nimmt ohne sie auf und meldet sie als „busy“. Der Recorder erkennt eine Kamera an ihrer ID, bei Cam Profile ist das die Entity-ID (`camera.…`). Spricht eine andere Integration denselben Recorder mit eigenen Kamera-IDs an (zum Beispiel Cam Recorder Profile), erkennt er dieselbe Kamera dort nicht wieder und würde sie doppelt aufnehmen.
 - Von Hand gestartete Profile laufen bis zum Stopp. Nach einem Neustart von Home Assistant werden laufende Profile wieder erkannt. Ein von Hand gestartetes Profil mit Auslöser folgt danach wieder seinem Auslöser.
 - Wird eine Kamera-Entity umbenannt, ziehen die Profile automatisch mit.
-
-### Mehrere Zeiten pro Wochentag (Zeitplan)
-
-Für „montags 08–12 und 18–22 Uhr, dienstags nur nachts“ und Ähnliches nimmst du den Zeitplan-Helfer von Home Assistant, statt eigene Felder zu bauen:
-
-1. **Einstellungen → Geräte & Dienste → Helfer → Helfer erstellen → Zeitplan.** Dort trägst du für jeden Wochentag beliebig viele Zeiten im Wochenkalender ein.
-2. Im Schritt „Wann aufnehmen?“ des Profils wählst du ihn unter **Zeitplan** aus.
-3. Das Profil nimmt auf, solange der Zeitplan „an“ ist, und reagiert sofort, wenn er umschaltet. Wochentage, Von/Bis, Sonne und Auslöser gelten zusätzlich.
-
-Fehlt der gewählte Zeitplan (gelöscht oder noch nicht geladen), nimmt das Profil nicht auf. Der Aufnahme-Sensor des Profils nennt ihn im Attribut `schedule`. Den Zeitplan wechselst du im Zahnrad des Profils.
 
 ## Anlege-Werte und Überschreiben
 
@@ -80,24 +77,25 @@ Auf der Geräteseite des Profils (**Einstellungen → Geräte & Dienste → Cam 
 |---|---|
 | Nachlauf nach „aus“ (Sekunden) | `number` |
 | Höchstdauer pro Aufnahme (Minuten, 0 = unbegrenzt) | `number` |
-| Nur von / Nur bis (Uhrzeit, von = bis heißt ganztägig) | zwei `time` |
+| Nur von / Nur bis (Uhrzeit für Tage ohne eigene Zeiten, von = bis heißt ganztägig) | zwei `time` |
 | 1 Montag bis 7 Sonntag aufnehmen | sieben `switch`, alle aus heißt: an keinem Tag |
+| 1 Montag Zeiten bis 7 Sonntag Zeiten (zum Beispiel `08:00-12:00, 18:00-22:00`, leer = ganztägig) | sieben `text` |
 | Sonne: egal, nur bei Tag, nur bei Nacht | `select` |
 | Auf Anlege-Werte zurücksetzen | `button` |
 
 - Die Entities zeigen den **geltenden Wert**. Änderst du ihn, **überschreibst** du damit nur den Anlege-Wert, der im Profil gespeicherte Wert bleibt unverändert. Die Attribute der Entity nennen ihn (`creation_value`) und ob überschrieben wird (`overridden`).
 - Überschreibungen gelten sofort, ohne Neuladen, und überleben Neustarts. Sie liegen getrennt von den Profilen, das Zahnrad des Profils ändert sie nicht. Ändert das Zahnrad einen überschriebenen Wert, gilt weiter die Überschreibung, bis du **Auf Anlege-Werte zurücksetzen** drückst.
-- Beide Enden des Zeitfensters werden immer zusammen überschrieben. Alle sieben Wochentage heißen jeden Tag. Sind **alle aus**, nimmt das Profil an keinem Tag von allein auf (Pause), von Hand und über die Dienste lässt es sich weiter starten. Im Formular des Profils gilt dasselbe: ein Schalter je Tag, alle aus heißt an keinem Tag.
+- Beide Enden von Von/Bis werden immer zusammen überschrieben. Alle sieben Wochentage heißen jeden Tag. Sind **alle aus**, nimmt das Profil an keinem Tag von allein auf (Pause), von Hand und über die Dienste lässt es sich weiter starten. Im Formular des Profils gilt dasselbe: ein Schalter je Tag, alle aus heißt an keinem Tag. Die Zeiten werden als Text eingetragen, unlesbare Eingaben lehnt Home Assistant mit einer Meldung ab. Das Attribut `overridden` zeigt je Tag, ob er vom Anlege-Wert abweicht.
 - Zielordner, Dateinamen-Muster, Kameras und Auslöser lassen sich nur im Profil selbst ändern.
-- Schränkt eine Überschreibung ein Profil **ohne Auslöser** ein (Zeitfenster, Wochentage oder Sonne), nimmt es von allein in dieser Zeit auf und der Schalter „Von Hand aufnehmen“ entfällt. Nach dem Zurücksetzen ist er wieder da. Dafür lädt sich die Integration kurz neu.
-- Die globalen Grundeinstellungen aus Version 0.3 (Zahnrad der Integration) gibt es nicht mehr. Ihre Werte wurden beim Update in die Profile übernommen, damit sich nichts ändert.
+- Schränkt eine Überschreibung ein Profil **ohne Auslöser** ein (Von/Bis, Wochentage, Zeiten oder Sonne), nimmt es von allein in dieser Zeit auf und der Schalter „Von Hand aufnehmen“ entfällt. Nach dem Zurücksetzen ist er wieder da. Dafür lädt sich die Integration kurz neu.
+- Die globalen Grundeinstellungen aus Version 0.3 (Zahnrad der Integration) gibt es nicht mehr. Ihre Werte wurden beim Update in die Profile übernommen, damit sich nichts ändert. Das Zeitplan-Feld aus Version 0.5 entfällt, die Zeiten je Wochentag ersetzen es.
 
 ## Entities und Dienste
 
 | Entity | Wo |
 |---|---|
 | `binary_sensor` **Aufnahme** je Profil | am Gerät „Profil …“ (Ordner, seit wann, Kameras) |
-| `switch` **Von Hand aufnehmen** | am Gerät „Profil …“, nur bei Profilen ohne Auslöser und ohne Einschränkung (Zeitfenster, Wochentage, Sonne). Ein: Aufnahme starten, aus: stoppen. Bei Profilen mit Auslöser oder Einschränkung gibt es ihn nicht, denn der Auslöser würde ihn sofort wieder umlegen |
+| `switch` **Von Hand aufnehmen** | am Gerät „Profil …“, nur bei Profilen ohne Auslöser und ohne Einschränkung (Von/Bis, Wochentage, Zeiten, Sonne). Ein: Aufnahme starten, aus: stoppen. Bei Profilen mit Auslöser oder Einschränkung gibt es ihn nicht, denn der Auslöser würde ihn sofort wieder umlegen |
 | `number`, `time`, `select`, `switch`, `button` **Konfiguration** | am Gerät „Profil …“: die Einstellungen zum Überschreiben (siehe oben) |
 | `binary_sensor` **Aufnahme** je Kamera | am Gerät der Kamera aus ihrer eigenen Integration, mit den Profilen, in denen sie steht |
 | `binary_sensor` **Recorder erreichbar**, `sensor` **Status**, `sensor` **freier Speicher** | am Gerät „Cam Profile“ |
@@ -156,11 +154,11 @@ A profile decides **where** which cameras record and **when**: continuously, at 
 
 **Profile settings:** target folder, cameras, file name pattern (`{cam}`, `{short}`, `{profile}`, `%CCYY %MM %DD %hh %mm %ss`), triggers (any "on" records), run-on time, maximum length, time window and day/night. Without triggers and window a profile only starts by hand. A camera never records in two profiles at once, the first profile to start keeps it.
 
-**Weekdays and schedule:** the form has one switch per weekday (all on by default, all off means no day, same as on the device page). For several times per weekday pick a Home Assistant *Schedule* helper in the profile: it records only while the schedule is on, on top of weekdays, time window, sun and triggers.
+**Weekdays and times:** the form has a switch per weekday (all on by default, all off means no day, same as on the device page) and optional times per day, for example `08:00-12:00, 18:00-22:00` (several separated by commas, also across midnight). A day without times records all day, or within the from/until time. A day's own times replace from/until for that day.
 
-**Creation values and overrides:** what you enter when you create a profile (or change later with the profile's gear) are its creation values. On the profile's device page, under *Configuration*, you can override run-on, maximum length, time window, weekdays (seven switches, all off means no day) and sun. The page shows the value in effect, changing it only overrides the creation value, which stays stored unchanged. A button resets everything to the creation values. Overrides apply at once and survive restarts. An override that restricts a profile without triggers makes it record on its own and removes its manual switch until you reset it.
+**Creation values and overrides:** what you enter when you create a profile (or change later with the profile's gear) are its creation values. On the profile's device page, under *Configuration*, you can override run-on, maximum length, time window, weekdays (seven switches, all off means no day), the times per weekday (seven text fields) and sun. The page shows the value in effect, changing it only overrides the creation value, which stays stored unchanged. A button resets everything to the creation values. Overrides apply at once and survive restarts. An override that restricts a profile without triggers makes it record on its own and removes its manual switch until you reset it.
 
-**Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and without a restriction (time window, weekdays, sun) also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
+**Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and without a restriction (from/until, weekdays, times, sun) also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
 
 **Install:** add `https://github.com/RedDragonNode/ha-cam-profile` as an app repository (App Store → ⋮ → Repositories) and install *Cam Profile Recorder* with an `api_key` of at least 12 characters. Then add the same URL as a custom *Integration* repository in HACS, download *Cam Profile*, restart Home Assistant and add the integration with the app's address (`http://<hostname>:8099`, hostname from the app's Info page) and key.
 
