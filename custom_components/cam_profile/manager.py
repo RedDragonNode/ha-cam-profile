@@ -71,7 +71,7 @@ class ProfileCfg:
     max_min: int = 0
     time_from: str = ""
     time_to: str = ""
-    weekdays: list[str] = field(default_factory=list)  # leer = jeden Tag
+    weekdays: list[str] = field(default_factory=lambda: list(WEEKDAYS))  # Tage mit Aufnahme, leer = keiner
     sun: str = SUN_ANY
     overridden: list[str] = field(default_factory=list)  # Felder, die auf der Geräteseite überschrieben sind
 
@@ -81,7 +81,7 @@ class ProfileCfg:
 
     @property
     def weekday_limited(self) -> bool:
-        return 0 < len(set(self.weekdays)) < len(WEEKDAYS)
+        return len(set(self.weekdays)) < len(WEEKDAYS)
 
     @property
     def has_window(self) -> bool:
@@ -90,8 +90,8 @@ class ProfileCfg:
 
     @property
     def manual_only(self) -> bool:
-        """Ohne Auslöser und ohne Einschränkung startet und stoppt das Profil nur von Hand."""
-        return not self.triggers and not self.has_window
+        """Nichts startet von allein: ohne Auslöser und Einschränkung, oder wenn kein Wochentag aktiv ist."""
+        return not self.triggers and (not self.has_window or not self.weekdays)
 
 
 def overrides_store(hass: HomeAssistant, entry_id: str) -> Store[dict[str, Any]]:
@@ -144,6 +144,9 @@ class ProfileManager:
         """Profil aus den Anlege-Werten, darüber die Überschreibungen von der Geräteseite."""
         d = self.entry.subentries[sid].data
         values = {**d, **overrides}
+        days = values.get(CONF_WEEKDAYS)
+        if CONF_WEEKDAYS not in overrides and not days:
+            days = WEEKDAYS  # im Profil heißt keine Auswahl: jeden Tag
         return ProfileCfg(
             subentry_id=sid,
             name=d[CONF_NAME],
@@ -155,7 +158,7 @@ class ProfileManager:
             max_min=int(values.get(CONF_MAX_MINUTES) or 0),
             time_from=values.get(CONF_TIME_FROM) or "",
             time_to=values.get(CONF_TIME_TO) or "",
-            weekdays=[day for day in WEEKDAYS if day in (values.get(CONF_WEEKDAYS) or [])],
+            weekdays=[day for day in WEEKDAYS if day in days],
             sun=values.get(CONF_SUN) or SUN_ANY,
             overridden=[key for key in OVERRIDABLE if key in overrides],
         )

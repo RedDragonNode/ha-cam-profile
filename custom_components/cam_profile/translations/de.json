@@ -242,9 +242,6 @@
     },
     "recorder_not_configured": {
       "message": "Adresse und Schlüssel der App fehlen. Bitte unter „Verbindung ändern“ eintragen."
-    },
-    "last_weekday": {
-      "message": "Mindestens ein Wochentag muss an bleiben."
     }
   },
   "issues": {

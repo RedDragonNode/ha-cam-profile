@@ -242,9 +242,6 @@
     },
     "recorder_not_configured": {
       "message": "The app address and key are missing. Please enter them under \"Change connection\"."
-    },
-    "last_weekday": {
-      "message": "At least one weekday has to stay on."
     }
   },
   "issues": {

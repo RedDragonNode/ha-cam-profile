@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 from homeassistant.config_entries import ConfigSubentryData
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -189,10 +188,12 @@ async def test_weekday_switches_follow_the_profile(hass: HomeAssistant) -> None:
     assert states["p_Werktags"] == ["on", "on", "on", "off", "off", "off", "off"]
 
 
-async def test_weekday_switches_override_and_the_last_day_stays_on(hass: HomeAssistant) -> None:
+async def test_weekday_switches_override_and_all_off_means_no_day(hass: HomeAssistant) -> None:
     add_cameras(hass, "a")
+    hass.states.async_set("binary_sensor.x", "on")
     entry = await setup_entry(hass, [make_profile("A", ["camera.a"], triggers=["binary_sensor.x"])])
     day = {name: profile_entity(hass, entry, "p_A", "switch", f"weekday_{name}") for name in WEEKDAYS}
+    assert entry.runtime_data.profile_running("p_A")
 
     for name in ("sat", "sun"):
         await _call(hass, "switch", "turn_off", entity_id=day[name])
@@ -202,16 +203,36 @@ async def test_weekday_switches_override_and_the_last_day_stays_on(hass: HomeAss
     assert hass.states.get(day["sat"]).state == "off"
     assert entry.subentries["p_A"].data["weekdays"] == []  # der Anlege-Wert bleibt
 
-    for name in ("mon", "tue", "wed", "thu"):
+    for name in ("mon", "tue", "wed", "thu", "fri"):
         await _call(hass, "switch", "turn_off", entity_id=day[name])
-    with pytest.raises(ServiceValidationError) as err:
-        await hass.services.async_call("switch", "turn_off", {"entity_id": day["fri"]}, blocking=True)
-    assert err.value.translation_key == "last_weekday"
-    assert entry.runtime_data.profiles["p_A"].weekdays == ["fri"]
+    assert entry.runtime_data.profiles["p_A"].weekdays == []  # kein Fehler: alle aus ist erlaubt
+    assert {hass.states.get(day[name]).state for name in WEEKDAYS} == {"off"}
+    assert not entry.runtime_data.profile_running("p_A")  # der Auslöser ist an, aber kein Tag ist aktiv
+
+    await _call(hass, "switch", "turn_on", entity_id=day["wed"])
+    assert entry.runtime_data.profiles["p_A"].weekdays == ["wed"]
 
     for name in WEEKDAYS:
         await _call(hass, "switch", "turn_on", entity_id=day[name])
     assert not entry.runtime_data.profiles["p_A"].weekday_limited  # alle sieben: jeder Tag
+
+
+async def test_no_active_weekday_leaves_a_profile_without_trigger_hand_only(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a")
+    entry = await setup_entry(hass, [make_profile("Hand", ["camera.a"], sun="night")])
+    assert _manual_switch(hass, entry, "p_Hand") is None  # Sonne schränkt ein: läuft von allein
+
+    await entry.runtime_data.async_override("p_Hand", {"weekdays": []})
+    await hass.async_block_till_done()
+    profile = entry.runtime_data.profiles["p_Hand"]
+    assert profile.weekdays == []
+    assert profile.manual_only  # an keinem Tag von allein, also nur von Hand
+    assert _manual_switch(hass, entry, "p_Hand") is not None
+    assert not entry.runtime_data.profile_running("p_Hand")
+
+    await _call(hass, "button", "press", entity_id=profile_entity(hass, entry, "p_Hand", "button", "reset"))
+    assert entry.runtime_data.profiles["p_Hand"].weekdays == list(WEEKDAYS)
+    assert _manual_switch(hass, entry, "p_Hand") is None
 
 
 async def test_weekday_override_stops_a_running_trigger_profile_at_once(hass: HomeAssistant) -> None:
@@ -270,7 +291,7 @@ async def test_built_in_values_apply_to_fields_a_profile_does_not_have(hass: Hom
     add_cameras(hass, "a")
     entry = await setup_entry(hass, [bare_profile("A", ["camera.a"], folder="X")])
     profile = entry.runtime_data.profiles["p_A"]
-    assert (profile.after_s, profile.max_min, profile.weekdays, profile.sun) == (0, 0, [], "")
+    assert (profile.after_s, profile.max_min, profile.weekdays, profile.sun) == (0, 0, list(WEEKDAYS), "")
     assert profile.pattern == "{cam} %CCYY-%MM-%DD %hh-%mm-%ss"
     assert profile.manual_only
 

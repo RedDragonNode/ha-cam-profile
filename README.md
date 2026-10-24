@@ -70,13 +70,13 @@ Auf der Geräteseite des Profils (**Einstellungen → Geräte & Dienste → Cam 
 | Nachlauf nach „aus“ (Sekunden) | `number` |
 | Höchstdauer pro Aufnahme (Minuten, 0 = unbegrenzt) | `number` |
 | Nur von / Nur bis (Uhrzeit, von = bis heißt ganztägig) | zwei `time` |
-| Montag bis Sonntag aufnehmen | sieben `switch`, mindestens ein Tag bleibt an |
+| 1 Montag bis 7 Sonntag aufnehmen | sieben `switch`, alle aus heißt: an keinem Tag |
 | Sonne: egal, nur bei Tag, nur bei Nacht | `select` |
 | Auf Anlege-Werte zurücksetzen | `button` |
 
 - Die Entities zeigen den **geltenden Wert**. Änderst du ihn, **überschreibst** du damit nur den Anlege-Wert, der im Profil gespeicherte Wert bleibt unverändert. Die Attribute der Entity nennen ihn (`creation_value`) und ob überschrieben wird (`overridden`).
 - Überschreibungen gelten sofort, ohne Neuladen, und überleben Neustarts. Sie liegen getrennt von den Profilen, das Zahnrad des Profils ändert sie nicht. Ändert das Zahnrad einen überschriebenen Wert, gilt weiter die Überschreibung, bis du **Auf Anlege-Werte zurücksetzen** drückst.
-- Beide Enden des Zeitfensters werden immer zusammen überschrieben. Alle sieben Wochentage heißen jeden Tag.
+- Beide Enden des Zeitfensters werden immer zusammen überschrieben. Alle sieben Wochentage heißen jeden Tag. Sind **alle aus**, nimmt das Profil an keinem Tag von allein auf (Pause), von Hand und über die Dienste lässt es sich weiter starten. Im Formular des Profils heißt „keine Auswahl“ dagegen jeden Tag.
 - Zielordner, Dateinamen-Muster, Kameras und Auslöser lassen sich nur im Profil selbst ändern.
 - Schränkt eine Überschreibung ein Profil **ohne Auslöser** ein (Zeitfenster, Wochentage oder Sonne), nimmt es von allein in dieser Zeit auf und der Schalter „Von Hand aufnehmen“ entfällt. Nach dem Zurücksetzen ist er wieder da. Dafür lädt sich die Integration kurz neu.
 - Die globalen Grundeinstellungen aus Version 0.3 (Zahnrad der Integration) gibt es nicht mehr. Ihre Werte wurden beim Update in die Profile übernommen, damit sich nichts ändert.
@@ -145,7 +145,7 @@ A profile decides **where** which cameras record and **when**: continuously, at 
 
 **Profile settings:** target folder, cameras, file name pattern (`{cam}`, `{short}`, `{profile}`, `%CCYY %MM %DD %hh %mm %ss`), triggers (any "on" records), run-on time, maximum length, time window and day/night. Without triggers and window a profile only starts by hand. A camera never records in two profiles at once, the first profile to start keeps it.
 
-**Creation values and overrides:** what you enter when you create a profile (or change later with the profile's gear) are its creation values. On the profile's device page, under *Configuration*, you can override run-on, maximum length, time window, weekdays (seven switches) and sun. The page shows the value in effect, changing it only overrides the creation value, which stays stored unchanged. A button resets everything to the creation values. Overrides apply at once and survive restarts. An override that restricts a profile without triggers makes it record on its own and removes its manual switch until you reset it.
+**Creation values and overrides:** what you enter when you create a profile (or change later with the profile's gear) are its creation values. On the profile's device page, under *Configuration*, you can override run-on, maximum length, time window, weekdays (seven switches, all off means no day) and sun. The page shows the value in effect, changing it only overrides the creation value, which stays stored unchanged. A button resets everything to the creation values. Overrides apply at once and survive restarts. An override that restricts a profile without triggers makes it record on its own and removes its manual switch until you reset it.
 
 **Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and without a restriction (time window, weekdays, sun) also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
 

@@ -6,11 +6,10 @@ from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import CamProfileConfigEntry
-from .const import CONF_WEEKDAYS, DOMAIN, WEEKDAYS
+from .const import CONF_WEEKDAYS, WEEKDAYS
 from .entity import ProfileEntity, ProfileSettingEntity
 from .manager import ProfileCfg, ProfileManager
 
@@ -47,7 +46,7 @@ class ProfileManualSwitch(ProfileEntity, SwitchEntity):
 
 
 class ProfileWeekdaySwitch(ProfileSettingEntity, SwitchEntity):
-    """Nimmt das Profil an diesem Wochentag auf? Sind alle sieben an, gilt jeder Tag."""
+    """Nimmt das Profil an diesem Wochentag auf? Alle sieben an heißt jeden Tag, alle aus an keinem Tag."""
 
     fields = (CONF_WEEKDAYS,)
 
@@ -57,17 +56,15 @@ class ProfileWeekdaySwitch(ProfileSettingEntity, SwitchEntity):
         self._attr_translation_key = f"profile_weekday_{day}"
 
     def _value_of(self, cfg: ProfileCfg) -> bool:
-        return self.day in (cfg.weekdays or WEEKDAYS)  # keine Auswahl heißt jeden Tag
+        return self.day in cfg.weekdays
 
     @property
     def is_on(self) -> bool:
         return self._value_of(self.profile)
 
     async def _set_day(self, on: bool) -> None:
-        days = set(self.profile.weekdays or WEEKDAYS)
+        days = set(self.profile.weekdays)
         days = days | {self.day} if on else days - {self.day}
-        if not days:
-            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="last_weekday")
         await self.manager.async_override(self.sid, {CONF_WEEKDAYS: [day for day in WEEKDAYS if day in days]})
 
     async def async_turn_on(self, **kwargs: Any) -> None:
