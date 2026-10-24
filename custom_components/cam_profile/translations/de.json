@@ -124,25 +124,25 @@
         "name": "Von Hand aufnehmen"
       },
       "profile_weekday_mon": {
-        "name": "Wochentag 1: Montag"
+        "name": "1 Montag aufnehmen"
       },
       "profile_weekday_tue": {
-        "name": "Wochentag 2: Dienstag"
+        "name": "2 Dienstag aufnehmen"
       },
       "profile_weekday_wed": {
-        "name": "Wochentag 3: Mittwoch"
+        "name": "3 Mittwoch aufnehmen"
       },
       "profile_weekday_thu": {
-        "name": "Wochentag 4: Donnerstag"
+        "name": "4 Donnerstag aufnehmen"
       },
       "profile_weekday_fri": {
-        "name": "Wochentag 5: Freitag"
+        "name": "5 Freitag aufnehmen"
       },
       "profile_weekday_sat": {
-        "name": "Wochentag 6: Samstag"
+        "name": "6 Samstag aufnehmen"
       },
       "profile_weekday_sun": {
-        "name": "Wochentag 7: Sonntag"
+        "name": "7 Sonntag aufnehmen"
       }
     },
     "binary_sensor": {

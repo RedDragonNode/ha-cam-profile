@@ -51,12 +51,12 @@ def test_weekday_switches_sort_in_weekday_order_and_together(texts: dict[str, di
     days = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
     names = [texts[lang][f"entity.switch.profile_weekday_{day}.name"] for day in days]
     assert names == sorted(names)
-    assert len({name.split(" ")[0] for name in names}) == 1  # gleiches Wort davor, also ein Block
+    assert [name.split(" ")[0] for name in names] == [str(n) for n in range(1, 8)]  # Ziffer vorn: 1 bis 7
     others = [
         text
         for key, text in texts[lang].items()
         if key.startswith("entity.") and key.endswith(".name") and "profile_weekday_" not in key
     ]
+    assert not any(text[:1].isdigit() for text in others)  # nur die Wochentage beginnen mit einer Ziffer
     block = sorted([*others, *names])
-    first = block.index(names[0])
-    assert block[first : first + 7] == names  # keine andere Einstellung dazwischen
+    assert block[:7] == names  # ein Block am Anfang, keine andere Einstellung dazwischen
