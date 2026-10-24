@@ -29,6 +29,8 @@ async def test_entities_for_hub_profiles_and_cameras(hass: HomeAssistant) -> Non
         f"{eid}_recorder_free_space",
         f"{eid}_p_Eins_recording",
         f"{eid}_p_Zwei_recording",
+        f"{eid}_p_Eins_manual",  # Profile ohne Auslöser und Zeitfenster bekommen einen Schalter
+        f"{eid}_p_Zwei_manual",
         f"{eid}_cam_camera.a_recording",  # eine Kamera in zwei Profilen bekommt nur einen Sensor
         f"{eid}_cam_camera.b_recording",
     }

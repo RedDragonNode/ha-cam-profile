@@ -53,9 +53,9 @@ Regeln:
 
 - **Nur Zeitfenster oder Sonne, kein Auslöser:** nimmt im Fenster durchgehend auf (z. B. „bei Nacht“).
 - **Auslöser (und Fenster):** nimmt auf, solange ein Auslöser „an“ ist und das Fenster offen ist.
-- **Nichts angegeben:** nur von Hand über die Dienste unten.
+- **Nichts angegeben:** nur von Hand, über den Schalter **Von Hand aufnehmen** am Gerät des Profils oder über die Dienste unten.
 - **Eine Kamera nimmt nie in zwei Profilen gleichzeitig auf.** Wer zuerst kommt, behält sie, das andere Profil nimmt ohne sie auf und meldet sie als „busy“. Der Recorder erkennt eine Kamera an ihrer ID, bei Cam Profile ist das die Entity-ID (`camera.…`). Spricht eine andere Integration denselben Recorder mit eigenen Kamera-IDs an (zum Beispiel Cam Recorder Profile), erkennt er dieselbe Kamera dort nicht wieder und würde sie doppelt aufnehmen.
-- Von Hand gestartete Profile laufen bis zum Stopp. Nach einem Neustart von Home Assistant werden laufende Profile wieder erkannt.
+- Von Hand gestartete Profile laufen bis zum Stopp. Nach einem Neustart von Home Assistant werden laufende Profile wieder erkannt. Ein von Hand gestartetes Profil mit Auslöser folgt danach wieder seinem Auslöser.
 - Wird eine Kamera-Entity umbenannt, ziehen die Profile automatisch mit.
 
 ## Entities und Dienste
@@ -63,6 +63,7 @@ Regeln:
 | Entity | Wo |
 |---|---|
 | `binary_sensor` **Aufnahme** je Profil | am Gerät „Profil …“ (Ordner, seit wann, Kameras) |
+| `switch` **Von Hand aufnehmen** | am Gerät „Profil …“, nur bei Profilen ohne Auslöser und ohne Zeitfenster. Ein: Aufnahme starten, aus: stoppen. Bei Profilen mit Auslöser oder Zeitfenster gibt es ihn nicht, denn der Auslöser würde ihn sofort wieder umlegen |
 | `binary_sensor` **Aufnahme** je Kamera | am Gerät der Kamera aus ihrer eigenen Integration, mit den Profilen, in denen sie steht |
 | `binary_sensor` **Recorder erreichbar**, `sensor` **Status**, `sensor` **freier Speicher** | am Gerät „Cam Profile“ |
 
@@ -120,7 +121,7 @@ A profile decides **where** which cameras record and **when**: continuously, at 
 
 **Profile settings:** target folder, cameras, file name pattern (`{cam}`, `{short}`, `{profile}`, `%CCYY %MM %DD %hh %mm %ss`), triggers (any "on" records), run-on time, maximum length, time window and day/night. Without triggers and window a profile only starts by hand. A camera never records in two profiles at once, the first profile to start keeps it.
 
-**Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
+**Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and time window also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
 
 **Install:** add `https://github.com/RedDragonNode/ha-cam-profile` as an app repository (App Store → ⋮ → Repositories) and install *Cam Profile Recorder* with an `api_key` of at least 12 characters. Then add the same URL as a custom *Integration* repository in HACS, download *Cam Profile*, restart Home Assistant and add the integration with the app's address (`http://<hostname>:8099`, hostname from the app's Info page) and key.
 

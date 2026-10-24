@@ -226,6 +226,19 @@ async def test_running_profile_is_readopted_after_restart(hass: HomeAssistant) -
     assert entry.runtime_data.profile_running("p_A")
     assert entry.runtime_data.profile_state["p_A"]["cams"] == ["camera.a"]
     assert entry.runtime_data.status == "recording"
+    await entry.runtime_data._profile_tick(None)
+    assert entry.runtime_data.profile_running("p_A")  # ohne Auslöser läuft es bis zum Stopp von Hand weiter
+
+
+async def test_readopted_profile_with_trigger_follows_its_trigger(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a")
+    hass.states.async_set("binary_sensor.x", "off")
+    FakeRecorder.remote_profiles = {"p_A": {"aufnahme": True, "kameras": {"camera.a": {"status": "nimmt auf"}}}}
+    entry = await setup_entry(hass, [make_profile("A", ["camera.a"], triggers=["binary_sensor.x"])])
+    await entry.runtime_data._poll_recorder(None)
+    assert entry.runtime_data.profile_running("p_A")
+    await entry.runtime_data._profile_tick(None)
+    assert not entry.runtime_data.profile_running("p_A")  # Auslöser ist aus -> das Profil endet wie gewohnt
 
 
 async def test_cameras_of_one_device_get_distinct_file_names(hass: HomeAssistant) -> None:

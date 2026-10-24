@@ -15,7 +15,7 @@ from homeassistant.helpers.typing import ConfigType
 from .const import ATTR_PROFILE, DOMAIN, SERVICE_START, SERVICE_STOP
 from .manager import ProfileManager
 
-PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 type CamProfileConfigEntry = ConfigEntry[ProfileManager]
@@ -55,19 +55,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: CamProfileConfigEntry) -
         )
         .id
     )
-    _remove_unused_cam_entities(hass, entry, manager)
+    _remove_unused_entities(hass, entry, manager)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     manager.async_start()
     entry.async_on_unload(entry.add_update_listener(_reload_on_change))
     return True
 
 
-def _remove_unused_cam_entities(hass: HomeAssistant, entry: ConfigEntry, manager: ProfileManager) -> None:
-    """Kameras, die in keinem Profil mehr vorkommen, verlieren ihren Aufnahme-Sensor."""
+def _remove_unused_entities(hass: HomeAssistant, entry: ConfigEntry, manager: ProfileManager) -> None:
+    """Kameras ohne Profil verlieren ihren Aufnahme-Sensor, Profile mit Auslöser oder Zeitfenster ihren Schalter."""
     registry = er.async_get(hass)
-    wanted = {f"{entry.entry_id}_cam_{eid}_recording" for eid in manager.cam_ids}
+    cams = {f"{entry.entry_id}_cam_{eid}_recording" for eid in manager.cam_ids}
+    switches = {f"{entry.entry_id}_{sid}_manual" for sid, p in manager.profiles.items() if p.manual_only}
     for ent in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if ent.unique_id.startswith(f"{entry.entry_id}_cam_") and ent.unique_id not in wanted:
+        stale_cam = ent.unique_id.startswith(f"{entry.entry_id}_cam_") and ent.unique_id not in cams
+        stale_switch = ent.domain == Platform.SWITCH and ent.unique_id not in switches
+        if stale_cam or stale_switch:
             registry.async_remove(ent.entity_id)
 
 

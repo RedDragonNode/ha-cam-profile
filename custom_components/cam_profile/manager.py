@@ -71,6 +71,11 @@ class ProfileCfg:
     def has_window(self) -> bool:
         return bool((self.time_from and self.time_to) or self.sun)
 
+    @property
+    def manual_only(self) -> bool:
+        """Ohne Auslöser und ohne Zeitfenster startet und stoppt das Profil nur von Hand."""
+        return not self.triggers and not self.has_window
+
 
 class ProfileManager:
     """Hält die Profile eines Config-Entries und steuert ihre Aufnahmen."""
@@ -266,8 +271,8 @@ class ProfileManager:
         return True
 
     def _wanted(self, p: ProfileCfg, now: datetime) -> bool:
-        if not p.triggers and not p.has_window:
-            return False  # nur von Hand
+        if p.manual_only:
+            return False
         if not self._window_open(p, now):
             return False
         return self._trigger_on(p) if p.triggers else True
@@ -429,7 +434,7 @@ class ProfileManager:
                 cams = [k for k, c in (ps.get("kameras") or {}).items() if c.get("status") != "beendet"]
                 self.profile_state[pid] = {
                     "start": dt_util.utcnow().isoformat(),
-                    "manual": False,
+                    "manual": p.manual_only,  # ein Profil ohne Auslöser läuft sonst nach dem Neuladen nicht weiter
                     "cams": cams,
                     "off_since": None,
                 }
