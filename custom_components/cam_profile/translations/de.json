@@ -1,0 +1,183 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Cam Profile",
+        "description": "Verbindung zur App „Cam Profile Recorder“. Die Adresse zeigt die Seite der App unter „Info → Hostname“, der Schlüssel ist der `api_key` aus den App-Einstellungen.",
+        "data": {
+          "recorder_url": "Adresse der App",
+          "recorder_key": "Schlüssel (api_key)"
+        }
+      },
+      "reconfigure": {
+        "title": "Verbindung ändern",
+        "data": {
+          "recorder_url": "Adresse der App",
+          "recorder_key": "Schlüssel (api_key)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Schlüssel erneuern",
+        "description": "Die App lehnt den Schlüssel ab. Bitte den aktuellen `api_key` aus den App-Einstellungen eintragen.",
+        "data": {
+          "recorder_key": "Schlüssel (api_key)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Die App ist unter dieser Adresse nicht erreichbar. Läuft sie, und stimmt der Hostname?",
+      "invalid_auth": "Der Schlüssel stimmt nicht mit dem `api_key` der App überein."
+    },
+    "abort": {
+      "single_instance_allowed": "Cam Profile ist schon eingerichtet.",
+      "reconfigure_successful": "Gespeichert.",
+      "reauth_successful": "Der neue Schlüssel ist gespeichert."
+    }
+  },
+  "config_subentries": {
+    "profile": {
+      "initiate_flow": {
+        "user": "Aufnahme-Profil hinzufügen",
+        "reconfigure": "Aufnahme-Profil bearbeiten"
+      },
+      "entry_type": "Aufnahme-Profil",
+      "step": {
+        "user": {
+          "title": "Neues Aufnahme-Profil",
+          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Du kannst jede Kamera wählen, die in Home Assistant schon eingerichtet ist, und dieselbe Kamera in mehreren Profilen verwenden. Eine Kamera nimmt aber nie in zwei Profilen gleichzeitig auf, wer zuerst kommt, behält sie. Im Dateinamen-Muster stehen `{cam}`, `{short}` und `{profile}` für Kamera, Kürzel und Profil, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
+          "data": {
+            "name": "Name (z. B. Treppe)",
+            "folder": "Zielordner (Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
+            "cams": "Kameras",
+            "pattern": "Dateinamen-Muster"
+          }
+        },
+        "user_when": {
+          "title": "Wann aufnehmen?",
+          "description": "Ohne Auslöser und ohne Zeitfenster startet das Profil nur von Hand. Nur mit Zeitfenster oder Sonne nimmt es in dieser Zeit durchgehend auf. Mit Auslöser, zum Beispiel einem Bewegungsmelder, nimmt es auf, solange einer „an“ ist (und das Zeitfenster offen ist).",
+          "data": {
+            "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
+            "after_seconds": "Nachlauf nach „aus“",
+            "max_minutes": "Höchstdauer pro Aufnahme (0 = unbegrenzt)",
+            "time_from": "Nur von (Uhrzeit)",
+            "time_to": "Nur bis (Uhrzeit)",
+            "sun": "Sonne"
+          }
+        },
+        "reconfigure": {
+          "title": "Aufnahme-Profil bearbeiten",
+          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Im Dateinamen-Muster stehen `{cam}`, `{short}` und `{profile}` für Kamera, Kürzel und Profil, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
+          "data": {
+            "name": "Name (z. B. Treppe)",
+            "folder": "Zielordner (Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
+            "cams": "Kameras",
+            "pattern": "Dateinamen-Muster"
+          }
+        },
+        "reconfigure_when": {
+          "title": "Wann aufnehmen?",
+          "description": "Ohne Auslöser und ohne Zeitfenster startet das Profil nur von Hand. Nur mit Zeitfenster oder Sonne nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist (und das Zeitfenster offen ist).",
+          "data": {
+            "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
+            "after_seconds": "Nachlauf nach „aus“",
+            "max_minutes": "Höchstdauer pro Aufnahme (0 = unbegrenzt)",
+            "time_from": "Nur von (Uhrzeit)",
+            "time_to": "Nur bis (Uhrzeit)",
+            "sun": "Sonne"
+          }
+        }
+      },
+      "error": {
+        "name_taken": "Diesen Namen gibt es schon (oder er ist leer).",
+        "folder_required": "Bitte einen Zielordner angeben.",
+        "cams_required": "Bitte mindestens eine Kamera wählen.",
+        "time_both": "Bitte „von“ und „bis“ zusammen angeben."
+      },
+      "abort": {
+        "reconfigure_successful": "Gespeichert."
+      }
+    }
+  },
+  "device": {
+    "profile": {
+      "name": "Profil {name}"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Bereit",
+          "recording": "Nimmt auf",
+          "error": "Fehler"
+        }
+      },
+      "recorder_free_space": {
+        "name": "Recorder: freier Speicher"
+      }
+    },
+    "binary_sensor": {
+      "recorder_online": {
+        "name": "Recorder erreichbar"
+      },
+      "cam_recording": {
+        "name": "Aufnahme"
+      },
+      "profile_recording": {
+        "name": "Aufnahme"
+      }
+    }
+  },
+  "selector": {
+    "sun_window": {
+      "options": {
+        "any": "egal",
+        "day": "nur bei Tag (Sonne über dem Horizont)",
+        "night": "nur bei Nacht (Sonne unter dem Horizont)"
+      }
+    }
+  },
+  "services": {
+    "start_profile": {
+      "name": "Profil starten",
+      "description": "Startet ein Aufnahme-Profil von Hand. Es läuft, bis es mit „Profil stoppen“ beendet wird.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Name des Profils."
+        }
+      }
+    },
+    "stop_profile": {
+      "name": "Profil stoppen",
+      "description": "Beendet ein Aufnahme-Profil.",
+      "fields": {
+        "profile": {
+          "name": "Profil",
+          "description": "Name des Profils."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "Cam Profile ist nicht eingerichtet oder nicht geladen."
+    },
+    "profile_not_found": {
+      "message": "Das Aufnahme-Profil „{profile}“ gibt es nicht."
+    },
+    "no_cam_available": {
+      "message": "Profil {profile}: keine Kamera frei oder ohne Stream-Quelle ({details})."
+    },
+    "recorder_not_configured": {
+      "message": "Adresse und Schlüssel der App fehlen. Bitte unter „Verbindung ändern“ eintragen."
+    }
+  },
+  "issues": {
+    "profile_lost": {
+      "title": "Aufnahme-Profil unerwartet beendet",
+      "description": "Der Recorder hat das Profil „{profile}“ beendet. Grund: {reason}. Das Profil startet wieder, sobald sein Auslöser oder Zeitfenster es verlangt, oder von Hand über „Profil starten“."
+    }
+  }
+}

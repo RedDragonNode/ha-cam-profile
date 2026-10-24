@@ -1,0 +1,14 @@
+start_profile:
+  fields:
+    profile:
+      required: true
+      example: Treppe
+      selector:
+        text:
+stop_profile:
+  fields:
+    profile:
+      required: true
+      example: Treppe
+      selector:
+        text:

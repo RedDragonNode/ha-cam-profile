@@ -1,0 +1,183 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Cam Profile",
+        "description": "Connection to the \"Cam Profile Recorder\" app. The address is shown on the app page under \"Info → Hostname\", the key is the `api_key` from the app settings.",
+        "data": {
+          "recorder_url": "App address",
+          "recorder_key": "Key (api_key)"
+        }
+      },
+      "reconfigure": {
+        "title": "Change connection",
+        "data": {
+          "recorder_url": "App address",
+          "recorder_key": "Key (api_key)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Renew key",
+        "description": "The app rejects the key. Please enter the current `api_key` from the app settings.",
+        "data": {
+          "recorder_key": "Key (api_key)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "The app cannot be reached at this address. Is it running, and is the hostname correct?",
+      "invalid_auth": "The key does not match the app's `api_key`."
+    },
+    "abort": {
+      "single_instance_allowed": "Cam Profile is already set up.",
+      "reconfigure_successful": "Saved.",
+      "reauth_successful": "The new key has been saved."
+    }
+  },
+  "config_subentries": {
+    "profile": {
+      "initiate_flow": {
+        "user": "Add recording profile",
+        "reconfigure": "Edit recording profile"
+      },
+      "entry_type": "Recording profile",
+      "step": {
+        "user": {
+          "title": "New recording profile",
+          "description": "A profile decides which cameras record into which folder. You can pick any camera that is already set up in Home Assistant, and use the same camera in several profiles. A camera never records in two profiles at the same time though, the first profile to start keeps it. In the file name pattern, `{cam}`, `{short}` and `{profile}` stand for camera, short code and profile, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
+          "data": {
+            "name": "Name (e.g. Stairs)",
+            "folder": "Target folder (pick one or type your own, subfolders like Security/Stairs work too)",
+            "cams": "Cameras",
+            "pattern": "File name pattern"
+          }
+        },
+        "user_when": {
+          "title": "When to record?",
+          "description": "Without triggers and without a time window the profile only starts by hand. With only a time window or sun condition it records continuously during that time. With triggers, for example a motion sensor, it records as long as one is \"on\" (and the time window is open).",
+          "data": {
+            "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
+            "after_seconds": "Run-on after \"off\"",
+            "max_minutes": "Maximum length per recording (0 = unlimited)",
+            "time_from": "Only from (time)",
+            "time_to": "Only until (time)",
+            "sun": "Sun"
+          }
+        },
+        "reconfigure": {
+          "title": "Edit recording profile",
+          "description": "A profile decides which cameras record into which folder. In the file name pattern, `{cam}`, `{short}` and `{profile}` stand for camera, short code and profile, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
+          "data": {
+            "name": "Name (e.g. Stairs)",
+            "folder": "Target folder (pick one or type your own, subfolders like Security/Stairs work too)",
+            "cams": "Cameras",
+            "pattern": "File name pattern"
+          }
+        },
+        "reconfigure_when": {
+          "title": "When to record?",
+          "description": "Without triggers and without a time window the profile only starts by hand. With only a time window or sun condition it records continuously during that time. With triggers it records as long as one is \"on\" (and the time window is open).",
+          "data": {
+            "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
+            "after_seconds": "Run-on after \"off\"",
+            "max_minutes": "Maximum length per recording (0 = unlimited)",
+            "time_from": "Only from (time)",
+            "time_to": "Only until (time)",
+            "sun": "Sun"
+          }
+        }
+      },
+      "error": {
+        "name_taken": "This name already exists (or is empty).",
+        "folder_required": "Please enter a target folder.",
+        "cams_required": "Please choose at least one camera.",
+        "time_both": "Please set \"from\" and \"until\" together."
+      },
+      "abort": {
+        "reconfigure_successful": "Saved."
+      }
+    }
+  },
+  "device": {
+    "profile": {
+      "name": "Profile {name}"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "recording": "Recording",
+          "error": "Error"
+        }
+      },
+      "recorder_free_space": {
+        "name": "Recorder: free space"
+      }
+    },
+    "binary_sensor": {
+      "recorder_online": {
+        "name": "Recorder reachable"
+      },
+      "cam_recording": {
+        "name": "Recording"
+      },
+      "profile_recording": {
+        "name": "Recording"
+      }
+    }
+  },
+  "selector": {
+    "sun_window": {
+      "options": {
+        "any": "any time",
+        "day": "daytime only (sun above the horizon)",
+        "night": "night only (sun below the horizon)"
+      }
+    }
+  },
+  "services": {
+    "start_profile": {
+      "name": "Start profile",
+      "description": "Starts a recording profile by hand. It keeps recording until it is ended with \"Stop profile\".",
+      "fields": {
+        "profile": {
+          "name": "Profile",
+          "description": "Name of the profile."
+        }
+      }
+    },
+    "stop_profile": {
+      "name": "Stop profile",
+      "description": "Ends a recording profile.",
+      "fields": {
+        "profile": {
+          "name": "Profile",
+          "description": "Name of the profile."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "Cam Profile is not set up or not loaded."
+    },
+    "profile_not_found": {
+      "message": "The recording profile \"{profile}\" does not exist."
+    },
+    "no_cam_available": {
+      "message": "Profile {profile}: no camera is free or has a stream source ({details})."
+    },
+    "recorder_not_configured": {
+      "message": "The app address and key are missing. Please enter them under \"Change connection\"."
+    }
+  },
+  "issues": {
+    "profile_lost": {
+      "title": "Recording profile ended unexpectedly",
+      "description": "The recorder ended the profile \"{profile}\". Reason: {reason}. The profile starts again when its trigger or time window asks for it, or by hand with \"Start profile\"."
+    }
+  }
+}
