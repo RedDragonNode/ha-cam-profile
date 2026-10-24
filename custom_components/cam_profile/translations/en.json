@@ -44,7 +44,7 @@
       "step": {
         "user": {
           "title": "New recording profile",
-          "description": "A profile decides which cameras record into which folder. You can pick any camera that is already set up in Home Assistant, and use the same camera in several profiles. A camera never records in two profiles at the same time though, the first profile to start keeps it. In the file name pattern, `{cam}`, `{short}` and `{profile}` stand for camera, short code and profile, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
+          "description": "A profile decides which cameras record into which folder. You can pick any camera that is already set up in Home Assistant, and use the same camera in several profiles. A camera never records in two profiles at the same time though, the first profile to start keeps it. In the file name pattern you can use the placeholders cam (camera), short (short code) and profile (profile), each in curly braces, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (e.g. Stairs)",
             "folder": "Target folder (pick one or type your own, subfolders like Security/Stairs work too)",
@@ -66,7 +66,7 @@
         },
         "reconfigure": {
           "title": "Edit recording profile",
-          "description": "A profile decides which cameras record into which folder. In the file name pattern, `{cam}`, `{short}` and `{profile}` stand for camera, short code and profile, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
+          "description": "A profile decides which cameras record into which folder. In the file name pattern you can use the placeholders cam (camera), short (short code) and profile (profile), each in curly braces, plus date and time with %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (e.g. Stairs)",
             "folder": "Target folder (pick one or type your own, subfolders like Security/Stairs work too)",

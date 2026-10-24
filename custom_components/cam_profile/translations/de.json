@@ -44,7 +44,7 @@
       "step": {
         "user": {
           "title": "Neues Aufnahme-Profil",
-          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Du kannst jede Kamera wählen, die in Home Assistant schon eingerichtet ist, und dieselbe Kamera in mehreren Profilen verwenden. Eine Kamera nimmt aber nie in zwei Profilen gleichzeitig auf, wer zuerst kommt, behält sie. Im Dateinamen-Muster stehen `{cam}`, `{short}` und `{profile}` für Kamera, Kürzel und Profil, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
+          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Du kannst jede Kamera wählen, die in Home Assistant schon eingerichtet ist, und dieselbe Kamera in mehreren Profilen verwenden. Eine Kamera nimmt aber nie in zwei Profilen gleichzeitig auf, wer zuerst kommt, behält sie. Im Dateinamen-Muster kannst du die Platzhalter cam (Kamera), short (Kürzel) und profile (Profil) jeweils in geschweiften Klammern verwenden, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (z. B. Treppe)",
             "folder": "Zielordner (Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
@@ -66,7 +66,7 @@
         },
         "reconfigure": {
           "title": "Aufnahme-Profil bearbeiten",
-          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Im Dateinamen-Muster stehen `{cam}`, `{short}` und `{profile}` für Kamera, Kürzel und Profil, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
+          "description": "Ein Profil legt fest, in welchen Ordner welche Kameras aufnehmen. Im Dateinamen-Muster kannst du die Platzhalter cam (Kamera), short (Kürzel) und profile (Profil) jeweils in geschweiften Klammern verwenden, dazu Datum und Zeit mit %CCYY %MM %DD %hh %mm %ss.",
           "data": {
             "name": "Name (z. B. Treppe)",
             "folder": "Zielordner (Auswahl oder eigener Name, auch mit Unterordner wie Überwachung/Treppe)",
