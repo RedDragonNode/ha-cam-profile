@@ -43,3 +43,20 @@ def test_only_known_placeholders(texts: dict[str, dict[str, str]], lang: str) ->
 def test_placeholders_match_between_languages(texts: dict[str, dict[str, str]]) -> None:
     for key, de_text in texts["de"].items():
         assert set(re.findall(r"\{(\w+)\}", de_text)) == set(re.findall(r"\{(\w+)\}", texts["en"][key])), key
+
+
+@pytest.mark.parametrize("lang", ["de", "en"])
+def test_weekday_switches_sort_in_weekday_order_and_together(texts: dict[str, dict[str, str]], lang: str) -> None:
+    """Die Geräteseite sortiert nach dem Namen: Die Nummer im Namen hält Montag bis Sonntag in Reihenfolge."""
+    days = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+    names = [texts[lang][f"entity.switch.profile_weekday_{day}.name"] for day in days]
+    assert names == sorted(names)
+    assert len({name.split(" ")[0] for name in names}) == 1  # gleiches Wort davor, also ein Block
+    others = [
+        text
+        for key, text in texts[lang].items()
+        if key.startswith("entity.") and key.endswith(".name") and "profile_weekday_" not in key
+    ]
+    block = sorted([*others, *names])
+    first = block.index(names[0])
+    assert block[first : first + 7] == names  # keine andere Einstellung dazwischen

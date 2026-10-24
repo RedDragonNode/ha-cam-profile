@@ -124,25 +124,25 @@
         "name": "Record manually"
       },
       "profile_weekday_mon": {
-        "name": "Record on Monday"
+        "name": "Weekday 1: Monday"
       },
       "profile_weekday_tue": {
-        "name": "Record on Tuesday"
+        "name": "Weekday 2: Tuesday"
       },
       "profile_weekday_wed": {
-        "name": "Record on Wednesday"
+        "name": "Weekday 3: Wednesday"
       },
       "profile_weekday_thu": {
-        "name": "Record on Thursday"
+        "name": "Weekday 4: Thursday"
       },
       "profile_weekday_fri": {
-        "name": "Record on Friday"
+        "name": "Weekday 5: Friday"
       },
       "profile_weekday_sat": {
-        "name": "Record on Saturday"
+        "name": "Weekday 6: Saturday"
       },
       "profile_weekday_sun": {
-        "name": "Record on Sunday"
+        "name": "Weekday 7: Sunday"
       }
     },
     "binary_sensor": {
