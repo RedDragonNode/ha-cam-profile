@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
@@ -66,6 +67,7 @@ async def test_second_entry_is_refused(hass: HomeAssistant) -> None:
 
 async def test_reconfigure_changes_connection(hass: HomeAssistant) -> None:
     entry = await setup_entry(hass)
+    old_manager = entry.runtime_data
     result = await entry.start_reconfigure_flow(hass)
     assert result["step_id"] == "reconfigure"
     result = await hass.config_entries.flow.async_configure(
@@ -74,10 +76,14 @@ async def test_reconfigure_changes_connection(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
     assert entry.data == {"recorder_url": "http://neu:8099", "recorder_key": "neuerneuerneuer1"}
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.runtime_data is not old_manager  # genau ein Neuladen über den Update-Listener
 
 
 async def test_reauth_replaces_key(hass: HomeAssistant, bad_key: type[FakeRecorder]) -> None:
     entry = await setup_entry(hass)
+    old_manager = entry.runtime_data
     result = await entry.start_reauth_flow(hass)
     assert result["step_id"] == "reauth_confirm"
 
@@ -89,6 +95,8 @@ async def test_reauth_replaces_key(hass: HomeAssistant, bad_key: type[FakeRecord
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
     assert entry.data["recorder_key"] == "richtigrichtig12"
+    await hass.async_block_till_done()
+    assert entry.runtime_data is not old_manager
 
 
 # ------------------------------------------------------------------ Profile

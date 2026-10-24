@@ -102,9 +102,8 @@ class CamProfileConfigFlow(ConfigFlow, domain=DOMAIN):
             if error := await _check_recorder(self.hass, url, key):
                 errors["base"] = error
             else:
-                return self.async_update_reload_and_abort(
-                    entry, data_updates={CONF_RECORDER_URL: url, CONF_RECORDER_KEY: key}
-                )
+                # neu geladen wird über den Update-Listener der Integration, ein zweites Neuladen wäre doppelt
+                return self.async_update_and_abort(entry, data_updates={CONF_RECORDER_URL: url, CONF_RECORDER_KEY: key})
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=self.add_suggested_values_to_schema(CONNECTION_SCHEMA, user_input or dict(entry.data)),
@@ -122,7 +121,7 @@ class CamProfileConfigFlow(ConfigFlow, domain=DOMAIN):
             if error := await _check_recorder(self.hass, entry.data[CONF_RECORDER_URL], key):
                 errors["base"] = error
             else:
-                return self.async_update_reload_and_abort(entry, data_updates={CONF_RECORDER_KEY: key})
+                return self.async_update_and_abort(entry, data_updates={CONF_RECORDER_KEY: key})
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=vol.Schema({vol.Required(CONF_RECORDER_KEY): _SECRET}),
