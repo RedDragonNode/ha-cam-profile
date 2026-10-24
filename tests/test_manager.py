@@ -12,7 +12,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.util import dt as dt_util
 
-from custom_components.cam_profile.const import DOMAIN
+from custom_components.cam_profile.const import DOMAIN, WEEKDAYS
 from custom_components.cam_profile.recorder_client import RecorderAuthError, RecorderError
 
 from .conftest import STREAM, FakeRecorder, add_cameras, make_profile, setup_entry
@@ -175,16 +175,17 @@ async def test_sun_window(hass: HomeAssistant) -> None:
     assert not m.profile_running("p_Tag")  # Zeitfenster zu -> Aufnahme endet
 
 
-async def test_time_window_blocks_trigger(hass: HomeAssistant) -> None:
+async def test_day_times_block_trigger(hass: HomeAssistant) -> None:
     add_cameras(hass, "a")
     hass.states.async_set("binary_sensor.x", "on")
     now = dt_util.now()
-    other = (now + timedelta(hours=2)).strftime("%H:%M:%S")
-    later = (now + timedelta(hours=3)).strftime("%H:%M:%S")
+    other = (now + timedelta(hours=2)).strftime("%H:%M")
+    later = (now + timedelta(hours=3)).strftime("%H:%M")
+    day = WEEKDAYS[now.weekday()]
     entry = await setup_entry(
-        hass, [make_profile("Eins", ["camera.a"], triggers=["binary_sensor.x"], time_from=other, time_to=later)]
+        hass, [make_profile("Eins", ["camera.a"], triggers=["binary_sensor.x"], times={day: [f"{other}-{later}"]})]
     )
-    assert not entry.runtime_data.profile_running("p_Eins")  # Auslöser an, aber das Fenster ist zu
+    assert not entry.runtime_data.profile_running("p_Eins")  # Auslöser an, aber die Zeit des Tages ist noch nicht da
 
 
 async def test_max_duration_and_lost_detection(hass: HomeAssistant) -> None:

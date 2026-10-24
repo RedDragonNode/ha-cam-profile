@@ -24,7 +24,7 @@ async def test_switch_only_for_profiles_without_trigger_and_window(hass: HomeAss
             make_profile("Hand", ["camera.a"]),
             make_profile("Ausloeser", ["camera.b"], triggers=["binary_sensor.x"]),
             make_profile("Nacht", ["camera.c"], sun="night"),
-            make_profile("Fenster", ["camera.d"], time_from="22:00:00", time_to="06:00:00"),
+            make_profile("Fenster", ["camera.d"], times={"mon": ["22:00-06:00"]}),
         ],
     )
     assert _switch_id(hass, entry.entry_id, "p_Hand") is not None

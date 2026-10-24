@@ -54,13 +54,11 @@
         },
         "user_when": {
           "title": "Wann aufnehmen?",
-          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Wochentage, Zeiten, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Von/Bis gilt für jeden Tag, der keine eigenen Zeiten hat (Von = Bis heißt ganztägig). Die Wochentage und ihre Zeiten stellst du im nächsten Schritt ein. Nachlauf, Höchstdauer, Von/Bis, Wochentage, Zeiten und Sonne kannst du später auf der Geräteseite des Profils überschreiben, ohne dass sich diese Werte ändern.",
+          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Wochentage, Zeiten, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Die Wochentage und ihre Zeiten stellst du im nächsten Schritt ein. Nachlauf, Höchstdauer, Wochentage, Zeiten und Sonne kannst du später auf der Geräteseite des Profils überschreiben, ohne dass sich diese Werte ändern.",
           "data": {
             "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
             "after_seconds": "Nachlauf nach „aus“ (Sekunden)",
             "max_minutes": "Höchstdauer pro Aufnahme (Minuten, 0 = unbegrenzt)",
-            "time_from": "Von (Uhrzeit, für Tage ohne eigene Zeiten)",
-            "time_to": "Bis (Uhrzeit, für Tage ohne eigene Zeiten)",
             "sun": "Sonne"
           }
         },
@@ -76,19 +74,17 @@
         },
         "reconfigure_when": {
           "title": "Wann aufnehmen?",
-          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Wochentage, Zeiten, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Von/Bis gilt für jeden Tag, der keine eigenen Zeiten hat (Von = Bis heißt ganztägig). Was du auf der Geräteseite des Profils überschrieben hast (aktuell: {overridden}), bleibt davon unberührt, bis du dort „Auf Anlege-Werte zurücksetzen“ drückst.",
+          "description": "Das sind die Anlege-Werte des Profils. Ohne Auslöser und ohne Einschränkung (Wochentage, Zeiten, Sonne) startet das Profil nur von Hand. Mit Einschränkung, aber ohne Auslöser, nimmt es in dieser Zeit durchgehend auf. Mit Auslöser nimmt es auf, solange einer „an“ ist und die Einschränkung passt. Was du auf der Geräteseite des Profils überschrieben hast (aktuell: {overridden}), bleibt davon unberührt, bis du dort „Auf Anlege-Werte zurücksetzen“ drückst.",
           "data": {
             "triggers": "Auslöser (Bewegung, Schalter, Sensor: „an“ = aufnehmen)",
             "after_seconds": "Nachlauf nach „aus“ (Sekunden)",
             "max_minutes": "Höchstdauer pro Aufnahme (Minuten, 0 = unbegrenzt)",
-            "time_from": "Von (Uhrzeit, für Tage ohne eigene Zeiten)",
-            "time_to": "Bis (Uhrzeit, für Tage ohne eigene Zeiten)",
             "sun": "Sonne"
           }
         },
         "user_days": {
           "title": "An welchen Tagen und wann?",
-          "description": "Schalte jeden Tag an, an dem aufgenommen werden soll, und trage dazu optional die Zeiten ein, zum Beispiel 08:00-12:00, 18:00-22:00 (mehrere durch Komma, auch über Mitternacht wie 22:00-06:00, ein Fenster über Mitternacht gehört zu dem Tag, an dem es beginnt). Ohne Zeiten nimmt der Tag ganztägig auf, oder nur in der Von/Bis-Zeit aus dem letzten Schritt. Sind alle Tage aus, nimmt das Profil an keinem Tag von allein auf, von Hand geht es weiter.",
+          "description": "Schalte jeden Tag an, an dem aufgenommen werden soll, und trage dazu optional die Zeiten ein, zum Beispiel 08:00-12:00, 18:00-22:00 (mehrere durch Komma, auch über Mitternacht wie 22:00-06:00, ein Fenster über Mitternacht gehört zu dem Tag, an dem es beginnt). Ohne Zeiten nimmt der Tag ganztägig auf. Sind alle Tage aus, nimmt das Profil an keinem Tag von allein auf, von Hand geht es weiter. Erst die Schaltfläche „Profil speichern“ speichert das Profil.",
           "data": {
             "weekday_mon": "Montag aufnehmen",
             "times_mon": "Montag: Zeiten (leer = ganztägig)",
@@ -104,11 +100,12 @@
             "times_sat": "Samstag: Zeiten (leer = ganztägig)",
             "weekday_sun": "Sonntag aufnehmen",
             "times_sun": "Sonntag: Zeiten (leer = ganztägig)"
-          }
+          },
+          "submit": "Profil speichern"
         },
         "reconfigure_days": {
           "title": "An welchen Tagen und wann?",
-          "description": "Schalte jeden Tag an, an dem aufgenommen werden soll, und trage dazu optional die Zeiten ein, zum Beispiel 08:00-12:00, 18:00-22:00 (mehrere durch Komma, auch über Mitternacht wie 22:00-06:00, ein Fenster über Mitternacht gehört zu dem Tag, an dem es beginnt). Ohne Zeiten nimmt der Tag ganztägig auf, oder nur in der Von/Bis-Zeit. Sind alle Tage aus, nimmt das Profil an keinem Tag von allein auf. Was du auf der Geräteseite des Profils überschrieben hast (aktuell: {overridden}), bleibt davon unberührt, bis du dort „Auf Anlege-Werte zurücksetzen“ drückst.",
+          "description": "Schalte jeden Tag an, an dem aufgenommen werden soll, und trage dazu optional die Zeiten ein, zum Beispiel 08:00-12:00, 18:00-22:00 (mehrere durch Komma, auch über Mitternacht wie 22:00-06:00, ein Fenster über Mitternacht gehört zu dem Tag, an dem es beginnt). Ohne Zeiten nimmt der Tag ganztägig auf. Sind alle Tage aus, nimmt das Profil an keinem Tag von allein auf. Was du auf der Geräteseite des Profils überschrieben hast (aktuell: {overridden}), bleibt davon unberührt, bis du dort „Auf Anlege-Werte zurücksetzen“ drückst. Erst die Schaltfläche „Profil speichern“ speichert die Änderungen.",
           "data": {
             "weekday_mon": "Montag aufnehmen",
             "times_mon": "Montag: Zeiten (leer = ganztägig)",
@@ -124,14 +121,14 @@
             "times_sat": "Samstag: Zeiten (leer = ganztägig)",
             "weekday_sun": "Sonntag aufnehmen",
             "times_sun": "Sonntag: Zeiten (leer = ganztägig)"
-          }
+          },
+          "submit": "Profil speichern"
         }
       },
       "error": {
         "name_taken": "Diesen Namen gibt es schon (oder er ist leer).",
         "folder_required": "Bitte einen Zielordner angeben.",
         "cams_required": "Bitte mindestens eine Kamera wählen.",
-        "time_both": "Bitte „von“ und „bis“ zusammen angeben.",
         "times_invalid": "Bitte Zeiten wie 08:00-12:00, 18:00-22:00 eintragen: von-bis, mehrere durch Komma."
       },
       "abort": {
@@ -201,14 +198,6 @@
       },
       "profile_max": {
         "name": "Höchstdauer pro Aufnahme"
-      }
-    },
-    "time": {
-      "profile_time_from": {
-        "name": "Nur von"
-      },
-      "profile_time_to": {
-        "name": "Nur bis"
       }
     },
     "select": {

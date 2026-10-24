@@ -28,8 +28,6 @@ from .const import (
     CONF_RECORDER_KEY,
     CONF_RECORDER_URL,
     CONF_SUN,
-    CONF_TIME_FROM,
-    CONF_TIME_TO,
     CONF_TIMES,
     CONF_TRIGGERS,
     CONF_WEEKDAYS,
@@ -98,20 +96,13 @@ def _how_data(user_input: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _when_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    """Nachlauf, Höchstdauer, Von/Bis für alle Tage und Sonne sowie die Fehler dazu."""
-    errors: dict[str, str] = {}
-    start, end = user_input.get(CONF_TIME_FROM) or "", user_input.get(CONF_TIME_TO) or ""
-    if bool(start) != bool(end):
-        errors[CONF_TIME_TO] = "time_both"
-    data = {
+def _when_data(user_input: Mapping[str, Any]) -> dict[str, Any]:
+    """Nachlauf, Höchstdauer und Sonne."""
+    return {
         CONF_AFTER: int(user_input.get(CONF_AFTER) or 0),
         CONF_MAX_MINUTES: int(user_input.get(CONF_MAX_MINUTES) or 0),
-        CONF_TIME_FROM: start if start and end else "",
-        CONF_TIME_TO: end if start and end else "",
         CONF_SUN: _SUN_OPTIONS.get(user_input.get(CONF_SUN) or "any", ""),
     }
-    return data, errors
 
 
 def _days_data(user_input: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
@@ -300,6 +291,7 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
             data_schema=self.add_suggested_values_to_schema(schema, user_input or _suggestions(current)),
             errors=errors,
             description_placeholders=self._placeholders(),
+            last_step=False,  # Schaltfläche: Weiter
         )
 
     # -------------------------------------------------------------- Schritt 2
@@ -308,10 +300,8 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            when, errors = _when_data(user_input)
-            if not errors:
-                self._when = {CONF_TRIGGERS: list(user_input.get(CONF_TRIGGERS) or []), **when}
-                return await self._step_days(step_id.replace("_when", "_days"), None, current)
+            self._when = {CONF_TRIGGERS: list(user_input.get(CONF_TRIGGERS) or []), **_when_data(user_input)}
+            return await self._step_days(step_id.replace("_when", "_days"), None, current)
         schema = vol.Schema(
             {
                 vol.Optional(CONF_TRIGGERS): selector.EntitySelector(
@@ -321,8 +311,6 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
                 ),
                 vol.Optional(CONF_AFTER): _num(3600, "s"),
                 vol.Optional(CONF_MAX_MINUTES): _num(1440, "min"),
-                vol.Optional(CONF_TIME_FROM): selector.TimeSelector(),
-                vol.Optional(CONF_TIME_TO): selector.TimeSelector(),
                 vol.Optional(CONF_SUN): _sun_select(),
             }
         )
@@ -331,6 +319,7 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
             data_schema=self.add_suggested_values_to_schema(schema, user_input or _suggestions(current)),
             errors=errors,
             description_placeholders=self._placeholders(),
+            last_step=False,  # Schaltfläche: Weiter
         )
 
     # -------------------------------------------------------------- Schritt 3
@@ -363,6 +352,7 @@ class ProfileSubentryFlow(ConfigSubentryFlow):
             ),
             errors=errors,
             description_placeholders=self._placeholders(),
+            last_step=True,  # Schaltfläche: Profil speichern
         )
 
     # ------------------------------------------------------------- Einstiege

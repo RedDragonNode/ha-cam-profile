@@ -43,15 +43,6 @@ def test_unique_names_only_touches_duplicates() -> None:
     assert logic.unique_names(["A", "B", "A"], ["x", "y", "z"]) == ["A x", "B", "A z"]
 
 
-def test_equal_start_and_end_is_not_a_window() -> None:
-    assert logic.has_time_window("22:00:00", "06:00:00")
-    assert logic.has_time_window("08:00", "18:00")
-    assert not logic.has_time_window("00:00:00", "00:00:00")
-    assert not logic.has_time_window("08:00", "08:00:00")
-    assert not logic.has_time_window("", "")
-    assert not logic.has_time_window(None, "06:00:00")
-
-
 def test_parse_times_reads_several_windows_and_normalises() -> None:
     assert logic.parse_times("08:00-12:00, 18:00 - 22:00") == ["08:00-12:00", "18:00-22:00"]
     assert logic.parse_times("8:00 bis 12:30; 22:00–06:00") == ["08:00-12:30", "22:00-06:00"]
@@ -73,49 +64,42 @@ ALL = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 
 @pytest.mark.parametrize(
-    ("when", "days", "times", "default", "expected"),
+    ("when", "days", "times", "expected"),
     [
-        # ohne Zeiten und ohne Von/Bis: aktive Tage sind ganztägig an
-        (FRIDAY.replace(hour=3), ALL, {}, (None, None), True),
-        (FRIDAY.replace(hour=3), ("mon",), {}, (None, None), False),
-        (FRIDAY.replace(hour=3), (), {}, (None, None), False),  # kein Tag aktiv
+        # ohne Zeiten: aktive Tage sind ganztägig an
+        (FRIDAY.replace(hour=3), ALL, {}, True),
+        (FRIDAY.replace(hour=3), ("mon",), {}, False),
+        (FRIDAY.replace(hour=3), (), {}, False),  # kein Tag aktiv
         # eigene Zeiten des Tages
-        (FRIDAY.replace(hour=9), ALL, {"fri": ["08:00-12:00", "18:00-22:00"]}, (None, None), True),
-        (FRIDAY.replace(hour=13), ALL, {"fri": ["08:00-12:00", "18:00-22:00"]}, (None, None), False),
-        (FRIDAY.replace(hour=19), ALL, {"fri": ["08:00-12:00", "18:00-22:00"]}, (None, None), True),
-        (FRIDAY.replace(hour=12), ALL, {"fri": ["08:00-12:00"]}, (None, None), False),  # Ende zählt nicht mehr dazu
+        (FRIDAY.replace(hour=9), ALL, {"fri": ["08:00-12:00", "18:00-22:00"]}, True),
+        (FRIDAY.replace(hour=13), ALL, {"fri": ["08:00-12:00", "18:00-22:00"]}, False),
+        (FRIDAY.replace(hour=19), ALL, {"fri": ["08:00-12:00", "18:00-22:00"]}, True),
+        (FRIDAY.replace(hour=12), ALL, {"fri": ["08:00-12:00"]}, False),  # Ende zählt nicht mehr dazu
         # Zeiten eines anderen Tages gelten nicht, dieser Tag ist dann ganztägig
-        (FRIDAY.replace(hour=13), ALL, {"mon": ["08:00-12:00"]}, (None, None), True),
-        # Von/Bis gilt für Tage ohne eigene Zeiten, eigene Zeiten ersetzen es
-        (FRIDAY.replace(hour=13), ALL, {}, ("08:00:00", "12:00:00"), False),
-        (FRIDAY.replace(hour=13), ALL, {"fri": ["12:30-14:00"]}, ("08:00:00", "12:00:00"), True),
-        (FRIDAY.replace(hour=10), ALL, {"fri": ["12:30-14:00"]}, ("08:00:00", "12:00:00"), False),
+        (FRIDAY.replace(hour=13), ALL, {"mon": ["08:00-12:00"]}, True),
         # Fenster über Mitternacht gehört zum Starttag
-        (FRIDAY.replace(hour=23), ("fri",), {"fri": ["22:00-06:00"]}, (None, None), True),
-        (SATURDAY.replace(hour=3), ("fri",), {"fri": ["22:00-06:00"]}, (None, None), True),  # noch der Freitag
-        (SATURDAY.replace(hour=7), ("fri",), {"fri": ["22:00-06:00"]}, (None, None), False),
-        (SATURDAY.replace(hour=3), ("sat",), {"fri": ["22:00-06:00"], "sat": ["10:00-11:00"]}, (None, None), False),
-        (MONDAY.replace(hour=0, minute=30), ("sun",), {"sun": ["22:00-06:00"]}, (None, None), True),
+        (FRIDAY.replace(hour=23), ("fri",), {"fri": ["22:00-06:00"]}, True),
+        (SATURDAY.replace(hour=3), ("fri",), {"fri": ["22:00-06:00"]}, True),  # noch der Freitag
+        (SATURDAY.replace(hour=7), ("fri",), {"fri": ["22:00-06:00"]}, False),
+        (SATURDAY.replace(hour=3), ("sat",), {"fri": ["22:00-06:00"], "sat": ["10:00-11:00"]}, False),
+        (MONDAY.replace(hour=0, minute=30), ("sun",), {"sun": ["22:00-06:00"]}, True),
         (
             SATURDAY.replace(hour=23),
             ("fri",),
             {"fri": ["22:00-06:00"]},
-            (None, None),
             False,
         ),  # Samstagabend ist nicht dran
-        # Von/Bis über Mitternacht für Tage ohne Zeiten
-        (SATURDAY.replace(hour=3), ("fri",), {}, ("22:00:00", "06:00:00"), True),
         # 24:00 als Ende, gleiche Zeit heißt ganztägig
-        (FRIDAY.replace(hour=23, minute=59), ALL, {"fri": ["18:00-24:00"]}, (None, None), True),
-        (FRIDAY.replace(hour=5), ALL, {"fri": ["10:00-10:00"]}, (None, None), True),
+        (FRIDAY.replace(hour=23, minute=59), ALL, {"fri": ["18:00-24:00"]}, True),
+        (FRIDAY.replace(hour=5), ALL, {"fri": ["10:00-10:00"]}, True),
     ],
 )
-def test_times_open(when: datetime, days: tuple, times: dict, default: tuple, expected: bool) -> None:
-    assert logic.times_open(when, days, times, *default) is expected
+def test_times_open(when: datetime, days: tuple, times: dict, expected: bool) -> None:
+    assert logic.times_open(when, days, times) is expected
 
 
 def test_describe_overrides_in_both_languages() -> None:
-    fields = ["time_from", "time_to", "weekdays", "after_seconds"]
-    assert logic.describe_overrides(fields, "de") == "Zeitfenster, Wochentage, Nachlauf"
-    assert logic.describe_overrides(fields, "en-GB") == "time window, weekdays, run-on"
+    fields = ["times", "weekdays", "after_seconds", "sun"]
+    assert logic.describe_overrides(fields, "de") == "Zeiten, Wochentage, Nachlauf, Sonne"
+    assert logic.describe_overrides(fields, "en-GB") == "times, weekdays, run-on, sun"
     assert logic.describe_overrides([], "de") == "–"

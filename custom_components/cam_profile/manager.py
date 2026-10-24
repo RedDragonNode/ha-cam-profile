@@ -33,8 +33,6 @@ from .const import (
     CONF_RECORDER_KEY,
     CONF_RECORDER_URL,
     CONF_SUN,
-    CONF_TIME_FROM,
-    CONF_TIME_TO,
     CONF_TIMES,
     CONF_TRIGGERS,
     CONF_WEEKDAYS,
@@ -70,16 +68,10 @@ class ProfileCfg:
     triggers: list[str] = field(default_factory=list)
     after_s: int = 0
     max_min: int = 0
-    time_from: str = ""
-    time_to: str = ""
     weekdays: list[str] = field(default_factory=lambda: list(WEEKDAYS))  # Tage mit Aufnahme, leer = keiner
     sun: str = SUN_ANY
     times: dict[str, list[str]] = field(default_factory=dict)  # je Tag Zeiten 'HH:MM-HH:MM', leer = ganztägig
     overridden: list[str] = field(default_factory=list)  # Felder, die auf der Geräteseite überschrieben sind
-
-    @property
-    def has_time_window(self) -> bool:
-        return logic.has_time_window(self.time_from, self.time_to)
 
     @property
     def has_day_times(self) -> bool:
@@ -93,7 +85,7 @@ class ProfileCfg:
     @property
     def has_window(self) -> bool:
         """Zeiten, Sonne oder Wochentage schränken ein: dann läuft das Profil auch ohne Auslöser."""
-        return self.has_time_window or bool(self.sun) or self.weekday_limited or self.has_day_times
+        return bool(self.sun) or self.weekday_limited or self.has_day_times
 
     @property
     def manual_only(self) -> bool:
@@ -163,8 +155,6 @@ class ProfileManager:
             triggers=list(d.get(CONF_TRIGGERS) or []),
             after_s=int(values.get(CONF_AFTER) or 0),
             max_min=int(values.get(CONF_MAX_MINUTES) or 0),
-            time_from=values.get(CONF_TIME_FROM) or "",
-            time_to=values.get(CONF_TIME_TO) or "",
             weekdays=[day for day in WEEKDAYS if day in days],
             sun=values.get(CONF_SUN) or SUN_ANY,
             times={day: list((values.get(CONF_TIMES) or {}).get(day) or []) for day in WEEKDAYS},
@@ -340,7 +330,7 @@ class ProfileManager:
         return any((st := self.hass.states.get(e)) is not None and st.state == STATE_ON for e in p.triggers)
 
     def _window_open(self, p: ProfileCfg, now: datetime) -> bool:
-        if not logic.times_open(now, p.weekdays, p.times, p.time_from, p.time_to):
+        if not logic.times_open(now, p.weekdays, p.times):
             return False
         if p.sun:
             sun = self.hass.states.get("sun.sun")

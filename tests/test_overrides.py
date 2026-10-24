@@ -132,32 +132,6 @@ async def test_removing_the_integration_removes_the_stored_overrides(hass: HomeA
 
 
 # ----------------------------------------------------- Zeitfenster und Sonne
-async def test_time_override_sets_both_ends_and_equal_means_all_day(hass: HomeAssistant) -> None:
-    add_cameras(hass, "a")
-    entry = await setup_entry(
-        hass, [make_profile("A", ["camera.a"], triggers=["binary_sensor.x"], time_from="22:00:00", time_to="06:00:00")]
-    )
-    start = profile_entity(hass, entry, "p_A", "time", "time_from")
-    end = profile_entity(hass, entry, "p_A", "time", "time_to")
-    assert (hass.states.get(start).state, hass.states.get(end).state) == ("22:00:00", "06:00:00")
-
-    await _call(hass, "time", "set_value", entity_id=end, time="23:30:00")
-    profile = entry.runtime_data.profiles["p_A"]
-    assert (profile.time_from, profile.time_to) == ("22:00:00", "23:30:00")
-    assert profile.overridden == ["time_from", "time_to"]  # beide Enden zusammen
-    assert hass.states.get(end).attributes["creation_value"] == "06:00:00"
-
-    await _call(hass, "time", "set_value", entity_id=start, time="23:30:00")  # von = bis: ganztägig
-    assert not entry.runtime_data.profiles["p_A"].has_time_window
-
-
-async def test_time_entities_show_midnight_without_a_window(hass: HomeAssistant) -> None:
-    add_cameras(hass, "a")
-    entry = await setup_entry(hass, [make_profile("A", ["camera.a"], triggers=["binary_sensor.x"])])
-    for key in ("time_from", "time_to"):
-        assert hass.states.get(profile_entity(hass, entry, "p_A", "time", key)).state == "00:00:00"
-
-
 async def test_sun_override(hass: HomeAssistant) -> None:
     add_cameras(hass, "a")
     entry = await setup_entry(hass, [make_profile("A", ["camera.a"], triggers=["binary_sensor.x"], sun="night")])
@@ -352,7 +326,8 @@ async def test_migration_without_global_defaults_only_makes_empty_weekdays_expli
     await hass.async_block_till_done()
 
     assert entry.minor_version == MINOR_VERSION
-    assert dict(entry.subentries["p_Alt"].data) == {**old, "weekdays": list(WEEKDAYS)}
+    expected = {key: value for key, value in old.items() if key not in ("time_from", "time_to")}
+    assert dict(entry.subentries["p_Alt"].data) == {**expected, "weekdays": list(WEEKDAYS)}
     assert dict(entry.subentries["p_Teil"].data) == some
     assert entry.runtime_data.profiles["p_Alt"].weekdays == list(WEEKDAYS)
 

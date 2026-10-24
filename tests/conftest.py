@@ -104,8 +104,6 @@ def make_profile(name: str, cams: list[str], **overrides: Any) -> dict[str, Any]
         "triggers": [],
         "after_seconds": 0,
         "max_minutes": 0,
-        "time_from": "",
-        "time_to": "",
         "weekdays": list(WEEKDAYS),
         "sun": "",
         **overrides,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -12,8 +14,12 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
+from . import logic
 from .const import (
     ATTR_PROFILE,
+    CONF_TIME_FROM,
+    CONF_TIME_TO,
+    CONF_TIMES,
     CONF_WEEKDAYS,
     DOMAIN,
     LEGACY_DEFAULTS,
@@ -30,7 +36,6 @@ PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.SWITCH,
     Platform.NUMBER,
-    Platform.TIME,
     Platform.TEXT,
     Platform.SELECT,
     Platform.BUTTON,
@@ -60,12 +65,31 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+def _window_into_day_times(data: dict[str, Any]) -> None:
+    """Von/Bis (Version 0.6 und älter) wird zu den Zeiten jedes Tages, der keine eigenen hat."""
+    start, end = data.pop(CONF_TIME_FROM, "") or "", data.pop(CONF_TIME_TO, "") or ""
+    if not (start and end):
+        return
+    try:
+        (window,) = logic.parse_times(f"{start}-{end}")
+    except ValueError:
+        return
+    first, last = window.split("-", 1)
+    if logic.split_range(window)[0] == logic.split_range(window)[1]:
+        return  # von = bis hieß ganztägig
+    times = {day: list(windows) for day, windows in (data.get(CONF_TIMES) or {}).items() if windows}
+    for day in WEEKDAYS:
+        times.setdefault(day, [f"{first}-{last}"])
+    data[CONF_TIMES] = times
+
+
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """1.x -> 1.5, ohne dass sich das Verhalten der Profile ändert.
+    """1.x -> 1.6, ohne dass sich das Verhalten der Profile ändert.
 
     1.3: Die globalen Grundeinstellungen aus Version 0.3 fallen weg, was ein Profil von dort geerbt hat,
     wird in das Profil geschrieben. 1.4: Leere Wochentage hießen jeden Tag und heißen jetzt an keinem Tag,
     deshalb speichern Profile alle sieben Tage ausdrücklich. 1.5: Das Zeitplan-Feld aus 0.5 entfällt.
+    1.6: Von/Bis entfällt, es wird zu den Zeiten jedes Tages, der keine eigenen hat.
     """
     if entry.version == 1 and entry.minor_version < MINOR_VERSION:
         defaults = (
@@ -80,6 +104,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             had_schedule = bool(data.pop(_OLD_SCHEDULE, None))
             if (entry.minor_version < 4 or had_schedule) and not data.get(CONF_WEEKDAYS):
                 data[CONF_WEEKDAYS] = list(WEEKDAYS)  # mit Zeitplan waren die Wochentage oft aus, weil er sie ersetzte
+            _window_into_day_times(data)
             if data != dict(sub.data):
                 hass.config_entries.async_update_subentry(entry, sub, data=data)
         hass.config_entries.async_update_entry(entry, options={}, minor_version=MINOR_VERSION)
@@ -119,7 +144,8 @@ def _remove_unused_entities(hass: HomeAssistant, entry: ConfigEntry, manager: Pr
         stale_switch = (
             ent.domain == Platform.SWITCH and ent.unique_id.endswith("_manual") and ent.unique_id not in switches
         )
-        if stale_cam or stale_switch:
+        stale_time = ent.domain == Platform.TIME  # Von/Bis gibt es seit 0.7 nicht mehr
+        if stale_cam or stale_switch or stale_time:
             registry.async_remove(ent.entity_id)
 
 

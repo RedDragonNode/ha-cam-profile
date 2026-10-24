@@ -150,8 +150,6 @@ async def test_profile_flow_creates_subentry_from_any_camera(hass: HomeAssistant
         "triggers": ["binary_sensor.treppe"],
         "after_seconds": 30,
         "max_minutes": 10,
-        "time_from": "",
-        "time_to": "",
         "sun": "night",
         "weekdays": ["mon", "tue", "wed", "thu", "fri", "sat"],  # ein Schalter je Tag, Sonntag aus
         "times": {"mon": ["08:00-12:00", "18:00-22:00"]},  # nur Tage mit Zeiten, der Rest gilt ganztägig
@@ -174,11 +172,7 @@ async def test_profile_flow_offers_recorder_folders_and_validates(hass: HomeAssi
         flow["flow_id"], {"name": "Neu", "folder": "A/B", "cams": ["camera.a"]}
     )
     assert ok["step_id"] == "user_when"
-    bad_time = await hass.config_entries.subentries.async_configure(flow["flow_id"], {"time_from": "22:00:00"})
-    assert bad_time["errors"] == {"time_to": "time_both"}
-    days = await hass.config_entries.subentries.async_configure(
-        flow["flow_id"], {"time_from": "22:00:00", "time_to": "06:00:00"}
-    )
+    days = await hass.config_entries.subentries.async_configure(flow["flow_id"], {"after_seconds": 5})
     assert days["step_id"] == "user_days"
     bad_times = await hass.config_entries.subentries.async_configure(
         flow["flow_id"], {"times_tue": "bis morgen", "times_wed": "25:00-26:00", "times_thu": "08:00-12:00"}
@@ -346,3 +340,30 @@ async def test_reconfigure_shows_the_saved_weekdays_and_times(hass: HomeAssistan
     assert [suggested[f"weekday_{day}"] for day in WEEKDAYS] == [True, False, False, False, False, True, False]
     assert suggested["times_mon"] == "08:00-12:00, 18:00-22:00"
     assert suggested["times_sat"] == ""
+
+
+async def test_buttons_say_next_and_only_the_last_step_saves(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a")
+    entry = await setup_entry(hass)
+    flow = await _start(hass, entry)
+    assert flow["last_step"] is False  # „Weiter“
+    when = await hass.config_entries.subentries.async_configure(
+        flow["flow_id"], {"name": "A", "folder": "X", "cams": ["camera.a"]}
+    )
+    assert (when["step_id"], when["last_step"]) == ("user_when", False)  # „Weiter“
+    days = await hass.config_entries.subentries.async_configure(flow["flow_id"], {})
+    assert (days["step_id"], days["last_step"]) == ("user_days", True)  # „Profil speichern“
+
+
+def test_last_step_button_is_labelled_save_profile() -> None:
+    import json
+    from pathlib import Path
+
+    folder = Path(__file__).resolve().parents[1] / "custom_components" / "cam_profile" / "translations"
+    for lang, label in (("de", "Profil speichern"), ("en", "Save profile")):
+        steps = json.loads((folder / f"{lang}.json").read_text(encoding="utf-8"))["config_subentries"]["profile"][
+            "step"
+        ]
+        assert steps["user_days"]["submit"] == label
+        assert steps["reconfigure_days"]["submit"] == label
+        assert "submit" not in steps["user_when"]  # die ersten Schritte behalten HAs „Weiter“

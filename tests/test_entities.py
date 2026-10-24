@@ -32,8 +32,6 @@ async def test_entities_for_hub_profiles_and_cameras(hass: HomeAssistant) -> Non
         for key in (
             "after_seconds",
             "max_minutes",
-            "time_from",
-            "time_to",
             "sun",
             "reset",
             *(f"weekday_{day}" for day in WEEKDAYS),

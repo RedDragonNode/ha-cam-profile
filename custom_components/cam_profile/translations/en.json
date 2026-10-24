@@ -54,13 +54,11 @@
         },
         "user_when": {
           "title": "When to record?",
-          "description": "These are the creation values of the profile. Without triggers and without a restriction (weekdays, times, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. From/until applies to every day that has no times of its own (from = until means all day). You set the weekdays and their times in the next step. You can override run-on, maximum length, from/until, weekdays, times and sun later on the profile's device page without changing these values.",
+          "description": "These are the creation values of the profile. Without triggers and without a restriction (weekdays, times, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. You set the weekdays and their times in the next step. You can override run-on, maximum length, weekdays, times and sun later on the profile's device page without changing these values.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
             "after_seconds": "Run-on after \"off\" (seconds)",
             "max_minutes": "Maximum length per recording (minutes, 0 = unlimited)",
-            "time_from": "From (time, for days without times of their own)",
-            "time_to": "Until (time, for days without times of their own)",
             "sun": "Sun"
           }
         },
@@ -76,19 +74,17 @@
         },
         "reconfigure_when": {
           "title": "When to record?",
-          "description": "These are the creation values of the profile. Without triggers and without a restriction (weekdays, times, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. From/until applies to every day that has no times of its own (from = until means all day). Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there.",
+          "description": "These are the creation values of the profile. Without triggers and without a restriction (weekdays, times, sun) the profile only starts by hand. With a restriction but no trigger it records continuously during that time. With triggers it records as long as one is \"on\" and the restriction fits. Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there.",
           "data": {
             "triggers": "Triggers (motion, switch, sensor: \"on\" = record)",
             "after_seconds": "Run-on after \"off\" (seconds)",
             "max_minutes": "Maximum length per recording (minutes, 0 = unlimited)",
-            "time_from": "From (time, for days without times of their own)",
-            "time_to": "Until (time, for days without times of their own)",
             "sun": "Sun"
           }
         },
         "user_days": {
           "title": "Which days and when?",
-          "description": "Switch on every day on which to record and optionally add the times, for example 08:00-12:00, 18:00-22:00 (several separated by commas, also across midnight like 22:00-06:00, a window across midnight belongs to the day it starts on). Without times the day records all day, or only within the from/until time of the last step. With all days off the profile never records on its own, by hand still works.",
+          "description": "Switch on every day on which to record and optionally add the times, for example 08:00-12:00, 18:00-22:00 (several separated by commas, also across midnight like 22:00-06:00, a window across midnight belongs to the day it starts on). Without times the day records all day. With all days off the profile never records on its own, by hand still works. Only the \"Save profile\" button saves the profile.",
           "data": {
             "weekday_mon": "Record on Monday",
             "times_mon": "Monday: times (empty = all day)",
@@ -104,11 +100,12 @@
             "times_sat": "Saturday: times (empty = all day)",
             "weekday_sun": "Record on Sunday",
             "times_sun": "Sunday: times (empty = all day)"
-          }
+          },
+          "submit": "Save profile"
         },
         "reconfigure_days": {
           "title": "Which days and when?",
-          "description": "Switch on every day on which to record and optionally add the times, for example 08:00-12:00, 18:00-22:00 (several separated by commas, also across midnight like 22:00-06:00, a window across midnight belongs to the day it starts on). Without times the day records all day, or only within the from/until time. With all days off the profile never records on its own. Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there.",
+          "description": "Switch on every day on which to record and optionally add the times, for example 08:00-12:00, 18:00-22:00 (several separated by commas, also across midnight like 22:00-06:00, a window across midnight belongs to the day it starts on). Without times the day records all day. With all days off the profile never records on its own. Whatever you overrode on the profile's device page (currently: {overridden}) is not touched by this until you press \"Reset to creation values\" there. Only the \"Save profile\" button saves the changes.",
           "data": {
             "weekday_mon": "Record on Monday",
             "times_mon": "Monday: times (empty = all day)",
@@ -124,14 +121,14 @@
             "times_sat": "Saturday: times (empty = all day)",
             "weekday_sun": "Record on Sunday",
             "times_sun": "Sunday: times (empty = all day)"
-          }
+          },
+          "submit": "Save profile"
         }
       },
       "error": {
         "name_taken": "This name already exists (or is empty).",
         "folder_required": "Please enter a target folder.",
         "cams_required": "Please choose at least one camera.",
-        "time_both": "Please set \"from\" and \"until\" together.",
         "times_invalid": "Please enter times like 08:00-12:00, 18:00-22:00: from-until, several separated by commas."
       },
       "abort": {
@@ -201,14 +198,6 @@
       },
       "profile_max": {
         "name": "Maximum length per recording"
-      }
-    },
-    "time": {
-      "profile_time_from": {
-        "name": "Only from"
-      },
-      "profile_time_to": {
-        "name": "Only until"
       }
     },
     "select": {

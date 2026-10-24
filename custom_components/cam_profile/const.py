@@ -18,7 +18,7 @@ CONF_PATTERN = "pattern"
 CONF_TRIGGERS = "triggers"  # Liste von Entities, "an" = aufnehmen
 CONF_AFTER = "after_seconds"
 CONF_MAX_MINUTES = "max_minutes"
-CONF_TIME_FROM = "time_from"
+CONF_TIME_FROM = "time_from"  # nur noch für die Migration: Von/Bis wurde zu Zeiten je Wochentag
 CONF_TIME_TO = "time_to"
 CONF_SUN = "sun"
 CONF_WEEKDAYS = "weekdays"  # Tage mit Aufnahme (Liste aus WEEKDAYS), fehlt = jeden Tag, leer = an keinem
@@ -37,20 +37,28 @@ WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 OVERRIDABLE = (
     CONF_AFTER,
     CONF_MAX_MINUTES,
-    CONF_TIME_FROM,
-    CONF_TIME_TO,
     CONF_WEEKDAYS,
     CONF_TIMES,
     CONF_SUN,
 )
 
 # Felder, die Version 0.3 als globale Grundeinstellung in config_entry.options kannte (nur für die Migration)
-LEGACY_DEFAULTS = (CONF_FOLDER, CONF_PATTERN, *OVERRIDABLE)
+LEGACY_DEFAULTS = (
+    CONF_FOLDER,
+    CONF_PATTERN,
+    CONF_AFTER,
+    CONF_MAX_MINUTES,
+    CONF_TIME_FROM,
+    CONF_TIME_TO,
+    CONF_WEEKDAYS,
+    CONF_SUN,
+)
 
 # Version 1.3: keine globalen Grundeinstellungen mehr, Profile speichern wieder ihre Anlege-Werte selbst
 # Version 1.4: leere Wochentage heißen an keinem Tag (vorher jeden Tag), Profile speichern alle sieben
 # Version 1.5: kein Zeitplan-Feld mehr, dafür Zeiten je Wochentag
-MINOR_VERSION = 5
+# Version 1.6: kein Von/Bis mehr, die Zeiten je Wochentag ersetzen es
+MINOR_VERSION = 6
 
 STORAGE_VERSION = 1
 

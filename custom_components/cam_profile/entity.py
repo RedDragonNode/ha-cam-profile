@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import time
 from typing import Any
 
 from homeassistant.const import EntityCategory
@@ -69,7 +68,7 @@ class ProfileSettingEntity(ProfileEntity):
         creation = self._value_of(self.manager.base[self.sid])
         return {
             "overridden": self.is_overridden,
-            "creation_value": creation.isoformat() if isinstance(creation, time) else creation,
+            "creation_value": creation,
         }
 
 

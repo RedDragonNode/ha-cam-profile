@@ -69,11 +69,6 @@ def _hms(value: str) -> str:
     return f"{value}:00" if len(value) == 5 else value
 
 
-def has_time_window(start: str | None, end: str | None) -> bool:
-    """Ist ein Zeitfenster gesetzt? Von = bis bedeutet ganztägig und zählt nicht als Fenster."""
-    return bool(start and end and _hms(start) != _hms(end))
-
-
 _END_OF_DAY = "24:00:00"
 _RANGE = re.compile(
     r"^\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(?:-|–|—|bis)\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*$", re.IGNORECASE
@@ -127,35 +122,23 @@ def _hits(cur: str, start: str, end: str, today: bool) -> bool:
     return cur >= start if today else cur < end  # über Mitternacht: abends heute, morgens noch vom Vortag
 
 
-def _day_windows(
-    day: str, times: Mapping[str, list[str]], default_from: str | None, default_to: str | None
-) -> list[tuple[str, str]]:
+def _day_windows(day: str, times: Mapping[str, list[str]]) -> list[tuple[str, str]]:
     if own := times.get(day):
         return [split_range(window) for window in own]
-    if has_time_window(default_from, default_to):
-        return [(_hms(default_from or ""), _hms(default_to or ""))]
-    return [("00:00:00", _END_OF_DAY)]
+    return [("00:00:00", _END_OF_DAY)]  # ohne Zeiten gilt der Tag ganztägig
 
 
-def times_open(
-    now: datetime,
-    days: Iterable[str],
-    times: Mapping[str, list[str]],
-    default_from: str | None,
-    default_to: str | None,
-) -> bool:
+def times_open(now: datetime, days: Iterable[str], times: Mapping[str, list[str]]) -> bool:
     """Passt now zu den aktiven Tagen und ihren Zeiten?
 
-    Ein Tag ohne eigene Zeiten nimmt in der Von/Bis-Zeit auf, ohne die ganztägig. Ein Fenster über Mitternacht gehört
-    zu dem Tag, an dem es beginnt: Freitag 22:00 bis 06:00 gilt um 03:00 Uhr nachts noch für den Freitag.
+    Ein Tag ohne eigene Zeiten nimmt ganztägig auf. Ein Fenster über Mitternacht gehört zu dem Tag, an dem es beginnt:
+    Freitag 22:00 bis 06:00 gilt um 03:00 Uhr nachts noch für den Freitag.
     """
     active = set(days)
     cur = now.strftime("%H:%M:%S")
     for offset, today in ((0, True), (1, False)):
         day = WEEKDAYS[(now.weekday() - offset) % 7]
-        if day in active and any(
-            _hits(cur, start, end, today) for start, end in _day_windows(day, times, default_from, default_to)
-        ):
+        if day in active and any(_hits(cur, start, end, today) for start, end in _day_windows(day, times)):
             return True
     return False
 
@@ -164,8 +147,6 @@ _FIELD_NAMES = {
     "de": {
         "after_seconds": "Nachlauf",
         "max_minutes": "Höchstdauer",
-        "time_from": "Zeitfenster",
-        "time_to": "Zeitfenster",
         "weekdays": "Wochentage",
         "times": "Zeiten",
         "sun": "Sonne",
@@ -173,8 +154,6 @@ _FIELD_NAMES = {
     "en": {
         "after_seconds": "run-on",
         "max_minutes": "maximum length",
-        "time_from": "time window",
-        "time_to": "time window",
         "weekdays": "weekdays",
         "times": "times",
         "sun": "sun",

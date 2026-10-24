@@ -55,27 +55,18 @@ async def test_other_days_times_do_not_matter_for_a_day_without_times(hass: Home
     assert entry.runtime_data.profile_running("p_A")  # Samstag hat keine Zeiten, also ganztägig
 
 
-async def test_day_times_replace_the_default_window_and_trigger_must_fit(hass: HomeAssistant) -> None:
+async def test_trigger_and_day_times_must_both_fit(hass: HomeAssistant) -> None:
     add_cameras(hass, "a", "b")
     hass.states.async_set("binary_sensor.x", "on")
     entry = await setup_entry(
         hass,
         [
-            make_profile(
-                "Eigen",
-                ["camera.a"],
-                triggers=["binary_sensor.x"],
-                time_from="12:00:00",
-                time_to="13:00:00",
-                times={"sat": ["08:00-10:00"]},
-            ),
-            make_profile(
-                "Standard", ["camera.b"], triggers=["binary_sensor.x"], time_from="12:00:00", time_to="13:00:00"
-            ),
+            make_profile("Drin", ["camera.a"], triggers=["binary_sensor.x"], times={"sat": ["08:00-10:00"]}),
+            make_profile("Draussen", ["camera.b"], triggers=["binary_sensor.x"], times={"sat": ["12:00-13:00"]}),
         ],
     )
-    assert entry.runtime_data.profile_running("p_Eigen")  # die eigenen Zeiten ersetzen Von/Bis
-    assert not entry.runtime_data.profile_running("p_Standard")  # Von/Bis gilt, und 09:00 liegt außerhalb
+    assert entry.runtime_data.profile_running("p_Drin")  # Auslöser an und 09:00 liegt in der Zeit
+    assert not entry.runtime_data.profile_running("p_Draussen")  # Auslöser an, aber die Zeit passt nicht
 
 
 async def test_text_entity_shows_overrides_and_keeps_the_creation_value(hass: HomeAssistant) -> None:
@@ -141,11 +132,11 @@ async def test_sensor_names_the_times(hass: HomeAssistant) -> None:
 
 
 # ------------------------------------------------------------------ Migration
-def _legacy(profiles: list[dict]) -> MockConfigEntry:
+def _legacy(profiles: list[dict], minor: int = 4) -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
         data={"recorder_url": URL, "recorder_key": KEY},
-        minor_version=4,
+        minor_version=minor,
         subentries_data=[
             ConfigSubentryData(
                 subentry_type="profile",
@@ -178,3 +169,27 @@ async def test_migration_drops_the_schedule_field_and_turns_days_back_on(hass: H
     assert "schedule" not in data["p_Tage"]
     assert data["p_Tage"]["weekdays"] == ["mon"]
     assert data["p_Pause"]["weekdays"] == []
+
+
+async def test_migration_turns_the_old_window_into_day_times(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a", "b", "c")
+    window = make_profile(
+        "Fenster", ["camera.a"], time_from="22:00:00", time_to="06:00:00", times={"sat": ["10:00-11:00"]}
+    )
+    all_day = make_profile("Ganztags", ["camera.b"], time_from="10:00:00", time_to="10:00:00")
+    none = make_profile("Keins", ["camera.c"], time_from="", time_to="")
+    entry = _legacy([window, all_day, none], minor=5)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.minor_version == MINOR_VERSION
+    data = {sid: dict(sub.data) for sid, sub in entry.subentries.items()}
+    for sid in data:
+        assert "time_from" not in data[sid]
+        assert "time_to" not in data[sid]
+    times = data["p_Fenster"]["times"]
+    assert times["sat"] == ["10:00-11:00"]  # eigene Zeiten bleiben
+    assert times["mon"] == times["fri"] == times["sun"] == ["22:00-06:00"]  # alle anderen Tage bekommen das Fenster
+    assert not data["p_Ganztags"].get("times")  # von = bis hieß ganztägig
+    assert not data["p_Keins"].get("times")
