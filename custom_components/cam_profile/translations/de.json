@@ -153,6 +153,12 @@
       },
       "recorder_free_space": {
         "name": "Recorder: freier Speicher"
+      },
+      "profile_cams": {
+        "name": "Kameras"
+      },
+      "profile_folder": {
+        "name": "Zielordner"
       }
     },
     "switch": {

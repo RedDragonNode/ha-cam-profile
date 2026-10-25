@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
 from custom_components.cam_profile.const import WEEKDAYS
 
-from .conftest import KEY, add_cameras, make_profile, setup_entry
+from .conftest import KEY, add_cameras, make_profile, profile_entity, setup_entry
 
 
 def _unique_ids(hass: HomeAssistant, entry: MockConfigEntry) -> set[str]:
@@ -34,6 +34,8 @@ async def test_entities_for_hub_profiles_and_cameras(hass: HomeAssistant) -> Non
             "max_minutes",
             "sun",
             "reset",
+            "cams",
+            "folder",
             *(f"weekday_{day}" for day in WEEKDAYS),
             *(f"times_{day}" for day in WEEKDAYS),
         )
@@ -153,3 +155,43 @@ async def test_unload_and_reload(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert hass.states.get("sensor.cam_profile_status").state == "idle"
+
+
+async def test_profile_sensors_show_cameras_and_target_folder(hass: HomeAssistant) -> None:
+    add_cameras(hass, "a", "b")
+    entry = await setup_entry(hass, [make_profile("Eins", ["camera.a", "camera.b"], folder="Ueberwachung/Treppe")])
+
+    cams = hass.states.get(profile_entity(hass, entry, "p_Eins", "sensor", "cams"))
+    assert cams.state == "A, B"
+    assert cams.attributes["count"] == 2
+    assert cams.attributes["cameras"] == ["camera.a", "camera.b"]
+    assert cams.attributes["names"] == ["A", "B"]
+
+    folder = hass.states.get(profile_entity(hass, entry, "p_Eins", "sensor", "folder"))
+    assert folder.state == "Ueberwachung/Treppe"
+    assert folder.attributes["path"] == "/media/Aufnahmen/Ueberwachung/Treppe"  # Aufnahme-Ort der App plus Ordner
+    assert folder.attributes["parts"] == ["Ueberwachung", "Treppe"]
+
+
+async def test_camera_sensor_names_follow_renames_and_stay_distinct(hass: HomeAssistant) -> None:
+    hass.states.async_set("camera.tor_main", "idle", {"friendly_name": "Tor"})
+    hass.states.async_set("camera.tor_sub", "idle", {"friendly_name": "Tor"})
+    entry = await setup_entry(hass, [make_profile("Tor", ["camera.tor_main", "camera.tor_sub"])])
+    sensor = profile_entity(hass, entry, "p_Tor", "sensor", "cams")
+    assert hass.states.get(sensor).state == "Tor tor_main, Tor tor_sub"  # gleiche Namen bekommen die Entity-ID dazu
+
+    hass.states.async_set("camera.tor_main", "idle", {"friendly_name": "Haustür"})
+    entry.runtime_data.notify()
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor).state == "Haustür, Tor"
+
+
+async def test_camera_sensor_state_stays_within_the_limit(hass: HomeAssistant) -> None:
+    names = [f"camera.cam{i:02d}" for i in range(30)]
+    for name in names:
+        hass.states.async_set(name, "idle", {"friendly_name": f"Eine Kamera mit sehr langem Namen {name[-2:]}"})
+    entry = await setup_entry(hass, [make_profile("Viele", names)])
+    state = hass.states.get(profile_entity(hass, entry, "p_Viele", "sensor", "cams"))
+    assert len(state.state) == 255
+    assert state.state.endswith("…")
+    assert state.attributes["count"] == 30  # vollständig steht es in den Attributen

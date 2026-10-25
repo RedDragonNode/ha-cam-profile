@@ -1,4 +1,4 @@
-"""Sensoren: Status und freier Speicher."""
+"""Sensoren: Status, freier Speicher sowie je Profil Kameras und Zielordner."""
 
 from __future__ import annotations
 
@@ -7,9 +7,11 @@ from homeassistant.const import EntityCategory, UnitOfInformation
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import CamProfileConfigEntry
-from .entity import CamProfileEntity, hub_device
-from .manager import STATUS_ERROR, STATUS_IDLE, STATUS_RECORDING, ProfileManager
+from . import CamProfileConfigEntry, logic
+from .entity import CamProfileEntity, ProfileEntity, hub_device
+from .manager import STATUS_ERROR, STATUS_IDLE, STATUS_RECORDING, ProfileCfg, ProfileManager
+
+_STATE_MAX = 255  # längere Zustände lehnt Home Assistant ab
 
 
 async def async_setup_entry(
@@ -17,6 +19,8 @@ async def async_setup_entry(
 ) -> None:
     m = entry.runtime_data
     async_add_entities([StatusSensor(m), RecorderSpaceSensor(m)])
+    for sid, profile in m.profiles.items():
+        async_add_entities([ProfileCamsSensor(m, profile), ProfileFolderSensor(m, profile)], config_subentry_id=sid)
 
 
 class StatusSensor(CamProfileEntity, SensorEntity):
@@ -75,3 +79,50 @@ class RecorderSpaceSensor(CamProfileEntity, SensorEntity):
     def extra_state_attributes(self) -> dict:
         storage = self.manager.rec_status.get("speicher") or {}
         return {"total_gb": storage.get("gesamt_gb"), "folder": self.manager.rec_status.get("wurzel")}
+
+
+class ProfileCamsSensor(ProfileEntity, SensorEntity):
+    """Welche Kameras im Profil stehen: die Namen als Zustand, die Entity-IDs im Attribut `cameras`."""
+
+    _attr_translation_key = "profile_cams"
+    _attr_icon = "mdi:cctv"
+
+    def __init__(self, m: ProfileManager, profile: ProfileCfg) -> None:
+        super().__init__(m, profile, "cams")
+
+    def _names(self) -> list[str]:
+        cams = self.profile.cams
+        # zwei Kameras desselben Geräts (Haupt- und Substream) heißen gleich, dann hängt die Entity-ID dran
+        return logic.unique_names([self.manager.cam_name(eid) for eid in cams], [eid.split(".", 1)[1] for eid in cams])
+
+    @property
+    def native_value(self) -> str:
+        text = ", ".join(self._names())
+        return text if len(text) <= _STATE_MAX else f"{text[: _STATE_MAX - 1]}…"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"count": len(self.profile.cams), "names": self._names(), "cameras": list(self.profile.cams)}
+
+
+class ProfileFolderSensor(ProfileEntity, SensorEntity):
+    """Wohin das Profil aufnimmt: der Zielordner. Der volle Pfad in der App steht im Attribut `path`."""
+
+    _attr_translation_key = "profile_folder"
+    _attr_icon = "mdi:folder-multiple"
+
+    def __init__(self, m: ProfileManager, profile: ProfileCfg) -> None:
+        super().__init__(m, profile, "folder")
+
+    @property
+    def native_value(self) -> str | None:
+        return "/".join(self.profile.folder) or None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        root = self.manager.rec_status.get("wurzel")
+        folder = "/".join(self.profile.folder)
+        return {
+            "path": f"{root.rstrip('/')}/{folder}" if root and folder else None,
+            "parts": list(self.profile.folder),
+        }

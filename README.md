@@ -93,6 +93,7 @@ Auf der Geräteseite des Profils (**Einstellungen → Geräte & Dienste → Cam 
 | Entity | Wo |
 |---|---|
 | `binary_sensor` **Aufnahme** je Profil | am Gerät „Profil …“ (Ordner, seit wann, Kameras) |
+| `sensor` **Kameras** und **Zielordner** je Profil | am Gerät „Profil …“ im Kasten Sensoren: welche Kameras im Profil stehen (Namen, Entity-IDs im Attribut `cameras`) und wohin aufgenommen wird (Ordner, voller Pfad in der App im Attribut `path`) |
 | `switch` **Von Hand aufnehmen** | am Gerät „Profil …“, nur bei Profilen ohne Auslöser und ohne Einschränkung (Wochentage, Zeiten, Sonne). Ein: Aufnahme starten, aus: stoppen. Bei Profilen mit Auslöser oder Einschränkung gibt es ihn nicht, denn der Auslöser würde ihn sofort wieder umlegen |
 | `number`, `time`, `select`, `switch`, `button` **Konfiguration** | am Gerät „Profil …“: die Einstellungen zum Überschreiben (siehe oben) |
 | `binary_sensor` **Aufnahme** je Kamera | am Gerät der Kamera aus ihrer eigenen Integration, mit den Profilen, in denen sie steht |
@@ -155,6 +156,8 @@ A profile decides **where** which cameras record and **when**: continuously, at 
 **Weekdays and times:** the form has a switch per weekday (all on by default, all off means no day, same as on the device page) and optional times per day, for example `08:00-12:00, 18:00-22:00` (several separated by commas, also across midnight). A day without times records all day. The form has three steps, the first two end with Next, only the last one saves (Save profile).
 
 **Creation values and overrides:** what you enter when you create a profile (or change later with the profile's gear) are its creation values. On the profile's device page, under *Configuration*, you can override run-on, maximum length, time window, weekdays (seven switches, all off means no day), the times per weekday (seven text fields) and sun. The page shows the value in effect, changing it only overrides the creation value, which stays stored unchanged. A button resets everything to the creation values. Overrides apply at once and survive restarts. An override that restricts a profile without triggers makes it record on its own and removes its manual switch until you reset it.
+
+**Sensors:** each profile's device shows which cameras are in it and the target folder (full path in the attribute `path`).
 
 **Services:** `cam_profile.start_profile` and `cam_profile.stop_profile` (response lists started and skipped cameras). Profiles without triggers and without a restriction (weekdays, times, sun) also get a **Record manually** switch on the profile's device. Renamed camera entities are followed automatically, and a profile the recorder ends unexpectedly raises a repair issue.
 

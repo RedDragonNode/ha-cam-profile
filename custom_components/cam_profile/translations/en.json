@@ -153,6 +153,12 @@
       },
       "recorder_free_space": {
         "name": "Recorder: free space"
+      },
+      "profile_cams": {
+        "name": "Cameras"
+      },
+      "profile_folder": {
+        "name": "Target folder"
       }
     },
     "switch": {
